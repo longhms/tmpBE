@@ -27,13 +27,17 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     /**
      * Đếm tổng số nhân viên (loại trừ admin) theo điều kiện tìm kiếm.
+     *
+     * mệnh đề LIKE có "ESCAPE '!'" để các ký tự '%', '_', '\' đã được
+     * escape ở tầng Service (ValidateUtil#escapeLikePattern) được hiểu là ký tự
+     * thường, không phải wildcard.
      */
     @Query(value =
         "SELECT COUNT(e.employee_id) " +
         "FROM employees e " +
         "  INNER JOIN departments d ON e.department_id = d.department_id " +
         "WHERE e.employee_login_id != 'admin' " +
-        "  AND (:employeeName IS NULL OR e.employee_name LIKE CONCAT('%', :employeeName, '%')) " +
+        "  AND (:employeeName IS NULL OR e.employee_name LIKE CONCAT('%', :employeeName, '%') ESCAPE '!') " +
         "  AND (:departmentId IS NULL OR e.department_id = :departmentId)",
         nativeQuery = true)
     Long countEmployees(
@@ -43,6 +47,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     /**
      * Lấy danh sách nhân viên (loại trừ admin) với tìm kiếm, sắp xếp, phân trang.
      * Thứ tự sắp xếp cố định: employee_name → certification_name → end_date → employee_id.
+     *
+     * mệnh đề LIKE có "ESCAPE '!'" tương tự countEmployees để đảm bảo
+     * ký tự đặc biệt ('%', '_', '\') không còn hiệu ứng wildcard sau khi được
+     * escape ở tầng Service.
      */
     @Query(value =
         "SELECT " +
@@ -60,13 +68,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
         "  LEFT JOIN employees_certifications ec ON e.employee_id = ec.employee_id " +
         "  LEFT JOIN certifications c ON ec.certification_id = c.certification_id " +
         "WHERE e.employee_login_id != 'admin' " +
-        "  AND (:employeeName IS NULL OR e.employee_name LIKE CONCAT('%', :employeeName, '%')) " +
+        "  AND (:employeeName IS NULL OR e.employee_name LIKE CONCAT('%', :employeeName, '%') ESCAPE '!') " +
         "  AND (:departmentId IS NULL OR e.department_id = :departmentId) " +
         "ORDER BY " +
         "  CASE WHEN :ordEmployeeName = 'ASC' THEN e.employee_name END ASC, " +
         "  CASE WHEN :ordEmployeeName = 'DESC' THEN e.employee_name END DESC, " +
-        "  CASE WHEN :ordCertificationName = 'ASC' THEN c.certification_name END ASC, " +
-        "  CASE WHEN :ordCertificationName = 'DESC' THEN c.certification_name END DESC, " +
+        "  CASE WHEN :ordCertificationName = 'ASC' THEN c.certification_level END DESC, " +
+        "  CASE WHEN :ordCertificationName = 'DESC' THEN c.certification_level END ASC, " +
         "  CASE WHEN :ordEndDate = 'ASC' THEN ec.end_date END ASC, " +
         "  CASE WHEN :ordEndDate = 'DESC' THEN ec.end_date END DESC, " +
         "  e.employee_id ASC " +

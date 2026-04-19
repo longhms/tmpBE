@@ -12,8 +12,11 @@ public class Constants {
     public static final String JWT_SECRET = "Luvina-Academe";
     public static final long JWT_EXPIRATION = 160 * 60 * 60; // 7 day
 
-    public static final long HTTP_CODE_200 = 200;
-    public static final long HTTP_CODE_500 = 500;
+    public static final String OFFSET = "オフセット";
+    public static final String LIMIT = "リミット";
+
+    public static final int DEFAULT_OFFSET = 0;
+    public static final int DEFAULT_LIMIT = 5;
 
     // config endpoints public
     public static final String[] ENDPOINTS_PUBLIC = new String[] {

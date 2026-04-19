@@ -6,32 +6,25 @@ package com.luvina.la.service.impl;
  */
 
 import com.luvina.la.config.MessageConstants;
-import com.luvina.la.config.MessageUtils;
 import com.luvina.la.dto.EmployeeListDTO;
 import com.luvina.la.payload.EmployeeListResponse;
+import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.repository.EmployeeRepository;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Triển khai EmployeeService - xử lý business logic cho chức năng Employee.
- *
- * Chức năng chính:
  * - Lấy danh sách nhân viên (search, sort, paging) từ database
  *
- * Lưu ý:
  * - Validate đầu vào đã được thực hiện tại Controller trước khi gọi Service
  * - Service chỉ thực hiện: normalize dữ liệu -> truy vấn DB -> trả về kết quả
  * - Sử dụng native SQL query thông qua EmployeeRepository
@@ -45,19 +38,17 @@ public class EmployeeServiceImpl implements EmployeeService {
     private static final Logger log = LoggerFactory.getLogger(EmployeeServiceImpl.class);
 
     private final EmployeeRepository employeeRepository;
-    private final MessageUtils messageUtils;
     private final ValidateUtil validateUtil;
 
     /**
      * Lấy danh sách nhân viên với tìm kiếm, sắp xếp, phân trang.
      *
-     * Flow xử lý:
-     *   Bước 1: Chuẩn hoá (normalize) các giá trị đầu vào (offset, limit, sort, filter)
-     *   Bước 2: Đếm tổng số bản ghi thoả điều kiện
-     *   Bước 3: Nếu totalRecords = 0 -> trả về danh sách rỗng
-     *   Bước 4: Lấy danh sách nhân viên từ DB với phân trang
-     *   Bước 5: Chuyển đổi kết quả Object[] -> EmployeeListDTO
-     *   Bước 6: Trả về response thành công (code 200)
+     *   Chuẩn hoá (normalize) các giá trị đầu vào (offset, limit, sort, filter)
+     *   Đếm tổng số bản ghi thoả điều kiện
+     *   Nếu totalRecords = 0 -> trả về danh sách rỗng (code 200)
+     *   Lấy danh sách nhân viên từ DB với phân trang
+     *   Chuyển đổi kết quả Object[] -> EmployeeListDTO
+     *   Trả về response thành công (code 200)
      *
      * Thứ tự ưu tiên sort cố định: employeeName -> certificationName -> endDate -> employeeId
      *
@@ -91,9 +82,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             // Bước 4: Đếm tổng số bản ghi thoả điều kiện (loại trừ admin)
             Long totalRecords = employeeRepository.countEmployees(empName, departmentId);
 
-            // Nếu không có bản ghi nào -> trả về danh sách rỗng với totalRecords = 0
+            // Nếu không có bản ghi nào -> trả về danh sách rỗng với totalRecords = 0 (code 200)
             if (totalRecords == 0) {
-                return new EmployeeListResponse(0L, Collections.emptyList());
+                return buildSuccessResponse(0L, Collections.emptyList());
             }
 
             // Bước 5: Lấy danh sách nhân viên từ DB với phân trang (LIMIT/OFFSET)
@@ -105,25 +96,42 @@ public class EmployeeServiceImpl implements EmployeeService {
             // Bước 6: Chuyển đổi kết quả native query (Object[]) sang DTO
             List<EmployeeListDTO> employees = validateUtil.mapResultsToDtos(results);
 
-            return new EmployeeListResponse(totalRecords, employees);
+            return buildSuccessResponse(totalRecords, employees);
 
         } catch (Exception e) {
-            // Bắt mọi exception không mong muốn -> trả về lỗi hệ thống ER015
+            // Bắt mọi exception không mong muốn -> trả về lỗi hệ thống ER015 (code 500)
             log.error("Error getting employees", e);
             return buildErrorResponse(MessageConstants.ER015);
         }
     }
 
     /**
-     * Tạo response lỗi với mã lỗi và danh sách tham số từ messages.properties.
+     * Tạo response thành công với HTTP status 200.
      *
-     * @param errorCode Mã lỗi (VD: ER015, ER021...)
-     * @param params    Danh sách tham số thay thế vào message template
-     * @return EmployeeListResponse với code 500 và thông báo lỗi
+     * set code khi trả về thành công
+     *
+     * @param totalRecords Tổng số bản ghi tìm thấy
+     * @param employees    Danh sách nhân viên
+     * @return EmployeeListResponse với code = "200"
      */
-    private EmployeeListResponse buildErrorResponse(String errorCode, String... params) {
-        List<String> paramList = params.length > 0
-                ? Arrays.asList(params) : Collections.emptyList();
-        return new EmployeeListResponse(errorCode, paramList);
+    private EmployeeListResponse buildSuccessResponse(Long totalRecords, List<EmployeeListDTO> employees) {
+        EmployeeListResponse response = new EmployeeListResponse();
+        response.setCode(String.valueOf(HttpStatus.OK.value()));
+        response.setTotalRecords(totalRecords);
+        response.setEmployees(employees);
+        return response;
+    }
+
+    /**
+     * Tạo response lỗi hệ thống với HTTP status 500.
+     *
+     * @param errorCode Mã lỗi (VD: ER015)
+     * @return EmployeeListResponse với code = "500" và thông tin lỗi
+     */
+    private EmployeeListResponse buildErrorResponse(String errorCode) {
+        EmployeeListResponse response = new EmployeeListResponse();
+        response.setCode(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        response.setMessage(new MessageResponse(errorCode, Collections.emptyList()));
+        return response;
     }
 }

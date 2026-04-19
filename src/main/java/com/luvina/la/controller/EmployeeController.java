@@ -5,11 +5,14 @@ package com.luvina.la.controller;
  * [EmployeeController.java], [Apr ,2026] [ntlong]
  */
 
+import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
 import com.luvina.la.payload.EmployeeListResponse;
+import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,13 +44,9 @@ public class EmployeeController {
     /**
      * API lấy danh sách nhân viên với tìm kiếm, sắp xếp, phân trang.
      *
-     * URL: GET /employee?employee_name=&department_id=&ord_employee_name=ASC
-     *      &ord_certification_name=ASC&ord_end_date=DESC&offset=&limit=
-     *
-     * Flow xử lý:
-     *   Bước 1: Validate các parameter đầu vào tại Controller
-     *   Bước 2: Nếu hợp lệ -> gọi Service để lấy dữ liệu
-     *   Bước 3: Nếu không hợp lệ -> trả về response lỗi ngay (ER021, ER018)
+     *   Validate các parameter đầu vào tại Controller
+     *   Nếu hợp lệ -> gọi Service để lấy dữ liệu
+     *   Nếu không hợp lệ -> trả về response lỗi
      *
      * @param employeeName         Tên nhân viên (LIKE %name%) - có thể null/empty
      * @param departmentId         ID phòng ban (exact match) - có thể null
@@ -68,36 +67,49 @@ public class EmployeeController {
             @RequestParam(value = "offset", required = false) String offset,
             @RequestParam(value = "limit", required = false) String limit) {
 
-        // Bước 1.1: Validate thứ tự sắp xếp (ER021)
+        // Validate thứ tự sắp xếp (ER021)
         // Giá trị ord chỉ được phép là "ASC", "DESC", null hoặc empty
-        // Nếu sai -> trả về lỗi ER021 ngay, không gọi Service
+        // Nếu sai -> trả về lỗi ER021
         if (!validateUtil.isValidOrder(ordEmployeeName)
                 || !validateUtil.isValidOrder(ordCertificationName)
                 || !validateUtil.isValidOrder(ordEndDate)) {
-            return new EmployeeListResponse(MessageConstants.ER021, Collections.emptyList());
+            return buildErrorResponse(MessageConstants.ER021, Collections.emptyList());
         }
 
-        // Bước 1.2: Validate offset phải là số nguyên >= 0 (ER018)
+        // Validate offset phải là số nguyên >= 0 (ER018)
         // Nếu offset không phải số nguyên hợp lệ -> trả về lỗi ER018 với tham số "オフセット"
         if (!validateUtil.isNonNegativeInteger(offset)) {
-            return new EmployeeListResponse(MessageConstants.ER018, Arrays.asList("オフセット"));
+            return buildErrorResponse(MessageConstants.ER018, Arrays.asList(Constants.OFFSET));
         }
 
-        // Bước 1.3: Validate limit phải là số nguyên >= 0 (ER018)
+        // Validate limit phải là số nguyên >= 0 (ER018)
         // Nếu limit không phải số nguyên hợp lệ -> trả về lỗi ER018 với tham số "リミット"
         if (!validateUtil.isNonNegativeInteger(limit)) {
-            return new EmployeeListResponse(MessageConstants.ER018, Arrays.asList("リミット"));
+            return buildErrorResponse(MessageConstants.ER018, Arrays.asList(Constants.LIMIT));
         }
 
-        // Bước 2: Parse offset/limit từ String sang Integer
+        // Parse offset/limit từ String sang Integer
         // Nếu null hoặc empty thì truyền null -> Service sẽ dùng giá trị mặc định
         Integer offsetValue = (offset == null || offset.isEmpty()) ? null : Integer.parseInt(offset);
         Integer limitValue = (limit == null || limit.isEmpty()) ? null : Integer.parseInt(limit);
 
-        // Bước 3: Gọi Service để lấy dữ liệu (đã qua validate)
+        // Gọi Service để lấy dữ liệu (đã qua validate)
         return employeeService.getEmployees(
                 employeeName, departmentId,
                 ordEmployeeName, ordCertificationName, ordEndDate,
                 offsetValue, limitValue);
+    }
+
+    /**
+     * Tạo response lỗi validate tại Controller với HTTP status 500.
+     * @param errorCode Mã lỗi
+     * @param params    Danh sách tham số thay thế vào message template
+     * @return EmployeeListResponse với code = "500" và thông tin lỗi
+     */
+    private EmployeeListResponse buildErrorResponse(String errorCode, List<String> params) {
+        EmployeeListResponse response = new EmployeeListResponse();
+        response.setCode(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        response.setMessage(new MessageResponse(errorCode, params));
+        return response;
     }
 }

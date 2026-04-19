@@ -5,6 +5,7 @@ package com.luvina.la.validation;
  * [ValidateUtil.java], [Apr ,2026] [ntlong]
  */
 
+import com.luvina.la.config.Constants;
 import com.luvina.la.dto.EmployeeListDTO;
 import com.luvina.la.payload.EmployeeListResponse;
 import org.springframework.stereotype.Component;
@@ -20,12 +21,10 @@ import java.util.List;
 /**
  * Lớp tiện ích chứa các method validate và normalize dữ liệu cho chức năng Employee.
  *
- * Chức năng chính:
  * - Validate: kiểm tra tính hợp lệ của các parameter đầu vào (sort order, offset, limit)
  * - Normalize: chuẩn hoá giá trị mặc định khi parameter null/empty
  * - Mapping: chuyển đổi kết quả native query (Object[]) sang DTO
  *
- * Được sử dụng bởi:
  * - EmployeeController: gọi validate trước khi xử lý
  * - EmployeeServiceImpl: gọi normalize và mapping
  *
@@ -75,9 +74,6 @@ public class ValidateUtil {
         }
     }
 
-    // ====================================================================
-    // NORMALIZE METHODS - Chuẩn hoá giá trị mặc định
-    // ====================================================================
 
     /**
      * Chuẩn hoá giá trị sort: null/empty -> "ASC" (mặc định sắp xếp tăng dần).
@@ -98,7 +94,7 @@ public class ValidateUtil {
      * @return 0 nếu null/âm, giữ nguyên nếu hợp lệ
      */
     public int normalizeOffset(Integer offset) {
-        return (offset == null || offset < 0) ? 0 : offset;
+        return (offset == null || offset < 0) ? Constants.DEFAULT_OFFSET : offset;
     }
 
     /**
@@ -108,18 +104,49 @@ public class ValidateUtil {
      * @return 20 nếu null/<=0, giữ nguyên nếu hợp lệ
      */
     public int normalizeLimit(Integer limit) {
-        return (limit == null || limit <= 0) ? 20 : limit;
+        return (limit == null || limit <= 0) ? Constants.DEFAULT_LIMIT : limit;
     }
 
     /**
-     * Chuẩn hoá tên nhân viên: empty string -> null (để bỏ qua điều kiện WHERE trong SQL).
+     * Chuẩn hoá tên nhân viên cho điều kiện LIKE trong SQL.
+     *
+     * Empty string -> null (để bỏ qua điều kiện WHERE trong SQL).
+     * Escape các ký tự đặc biệt của LIKE ('!', '%', '_') để khi user gõ
+     *    chỉ tìm chuỗi chứa đúng ký tự "%", không bị coi là wildcard.
      *
      * @param employeeName Tên nhân viên từ request
-     * @return null nếu empty, giữ nguyên nếu có giá trị
+     * @return null nếu empty, ngược lại trả về chuỗi đã escape các ký tự LIKE
      */
     public String normalizeEmployeeName(String employeeName) {
-        return (employeeName != null && !employeeName.isEmpty())
-                ? employeeName : null;
+        if (employeeName == null || employeeName.isEmpty()) {
+            return null;
+        }
+        return escapeLikePattern(employeeName);
+    }
+
+    /**
+     * Escape các ký tự đặc biệt của SQL LIKE để tránh bị hiểu nhầm thành wildcard.
+     *
+     * Dùng '!' làm ký tự escape
+     * Các ký tự cần escape:
+     * - '!' : ký tự escape (phải thay thế đầu tiên để không escape lồng)
+     * - '%' : match 0 hoặc nhiều ký tự bất kỳ
+     * - '_' : match đúng 1 ký tự bất kỳ
+     *
+     * Dùng '!' làm ký tự escape thay '\' vì native query của Hibernate parse chuỗi '\'' trong "ESCAPE '\\'" sẽ gây lệch parameter index
+     * (bug Hibernate khi gặp backslash trong SQL literal).
+     *
+     * VD: user gõ "50%_test!" -> sau escape: "50!%!_test!!"
+     *
+     * @param input Chuỗi nguyên bản từ người dùng
+     * @return Chuỗi đã escape, an toàn để dùng trong vế LIKE ... ESCAPE '!'
+     */
+    public String escapeLikePattern(String input) {
+        if (input == null) return null;
+        return input
+                .replace("!", "!!")   // escape dấu '!' trước tiên (tránh double-escape)
+                .replace("%", "!%")   // escape dấu phần trăm
+                .replace("_", "!_");  // escape dấu gạch dưới
     }
 
     /**
