@@ -99,7 +99,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             return buildSuccessResponse(totalRecords, employees);
 
         } catch (Exception e) {
-            // Bắt mọi exception không mong muốn -> trả về lỗi hệ thống ER015 (code 500)
+
             log.error("Error getting employees", e);
             return buildErrorResponse(MessageConstants.ER015);
         }
@@ -116,7 +116,7 @@ public class EmployeeServiceImpl implements EmployeeService {
      */
     private EmployeeListResponse buildSuccessResponse(Long totalRecords, List<EmployeeListDTO> employees) {
         EmployeeListResponse response = new EmployeeListResponse();
-        response.setCode(String.valueOf(HttpStatus.OK.value()));
+        response.setCode(HttpStatus.OK.value());
         response.setTotalRecords(totalRecords);
         response.setEmployees(employees);
         return response;
@@ -130,7 +130,7 @@ public class EmployeeServiceImpl implements EmployeeService {
      */
     private EmployeeListResponse buildErrorResponse(String errorCode) {
         EmployeeListResponse response = new EmployeeListResponse();
-        response.setCode(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.setMessage(new MessageResponse(errorCode, Collections.emptyList()));
         return response;
     }

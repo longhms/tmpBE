@@ -7,15 +7,12 @@ package com.luvina.la.validation;
 
 import com.luvina.la.config.Constants;
 import com.luvina.la.dto.EmployeeListDTO;
-import com.luvina.la.payload.EmployeeListResponse;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**

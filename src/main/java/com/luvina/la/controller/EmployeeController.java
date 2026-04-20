@@ -108,7 +108,7 @@ public class EmployeeController {
      */
     private EmployeeListResponse buildErrorResponse(String errorCode, List<String> params) {
         EmployeeListResponse response = new EmployeeListResponse();
-        response.setCode(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.setMessage(new MessageResponse(errorCode, params));
         return response;
     }

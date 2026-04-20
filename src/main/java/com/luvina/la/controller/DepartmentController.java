@@ -10,6 +10,7 @@ import com.luvina.la.payload.DepartmentResponse;
 import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,9 +38,9 @@ public class DepartmentController {
     public DepartmentResponse getDepartments() {
         try {
             List<DepartmentDTO> departments = service.getAllDepartments();
-            return new DepartmentResponse("200", departments, null);
+            return new DepartmentResponse(HttpStatus.OK.value(), departments, null);
         } catch (Exception e) {
-            return new DepartmentResponse("500", null,
+            return new DepartmentResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), null,
                     new MessageResponse(MessageConstants.ER015, Collections.emptyList()));
         }
     }

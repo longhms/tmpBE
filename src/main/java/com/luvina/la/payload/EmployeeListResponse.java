@@ -27,7 +27,7 @@ import java.util.List;
 public class EmployeeListResponse {
 
     /** Ma HTTP status (dang String): "200" neu thanh cong, "500" neu loi he thong. */
-    private String code;
+    private int code;
 
     /** Tong so ban ghi thoa dieu kien tim kiem */
     private Long totalRecords;
