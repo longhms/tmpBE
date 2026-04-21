@@ -7,13 +7,21 @@ package com.luvina.la.controller;
 
 import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
+import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
+import com.luvina.la.payload.EmployeeRegisterResponse;
+import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -98,6 +106,50 @@ public class EmployeeController {
                 employeeName, departmentId,
                 ordEmployeeName, ordCertificationName, ordEndDate,
                 offsetValue, limitValue);
+    }
+
+    /**
+     * API lấy chi tiết 1 nhân viên theo employee_id (ADM003 / khởi tạo ADM004).
+     *
+     * URL: GET /employee/{employeeId}
+     *
+     * Các trường hợp:
+     *  - Thành công (200): trả về toàn bộ thông tin + danh sách chứng chỉ
+     *  - Không tồn tại / là admin: ER013 (500)
+     *  - Lỗi hệ thống: ER015 (500)
+     *
+     * @param employeeId ID nhân viên
+     * @return EmployeeDetailResponse chứa dữ liệu hoặc thông báo lỗi
+     */
+    @GetMapping("/{employeeId}")
+    public EmployeeDetailResponse getEmployeeDetail(@PathVariable("employeeId") Long employeeId) {
+        return employeeService.getEmployeeDetail(employeeId);
+    }
+
+    /**
+     * API thêm mới nhân viên (ADM005 -> ADM006).
+     * Toàn bộ validate dữ liệu nằm trong Service (EmployeeValidator).
+     */
+    @PostMapping
+    public EmployeeRegisterResponse addEmployee(@RequestBody EmployeeRequest request) {
+        return employeeService.addEmployee(request);
+    }
+
+    /**
+     * API cập nhật nhân viên (ADM005 -> ADM006).
+     * employeeId phải có trong body; loginId không được đổi; password rỗng -> giữ nguyên.
+     */
+    @PutMapping
+    public EmployeeRegisterResponse updateEmployee(@RequestBody EmployeeRequest request) {
+        return employeeService.updateEmployee(request);
+    }
+
+    /**
+     * API xoá nhân viên. ER014 nếu không tồn tại, ER020 nếu là admin.
+     */
+    @DeleteMapping("/{employeeId}")
+    public EmployeeRegisterResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
+        return employeeService.deleteEmployee(employeeId);
     }
 
     /**
