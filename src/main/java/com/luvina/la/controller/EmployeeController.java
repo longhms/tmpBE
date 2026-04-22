@@ -109,6 +109,50 @@ public class EmployeeController {
     }
 
     /**
+    * API check trùng employee-login-id
+    * Sử dụng EmployeeRegisterResponse để trả về lỗi
+    * */
+    @GetMapping("/check-employee-login-id")
+    public EmployeeRegisterResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
+        EmployeeRegisterResponse response = new EmployeeRegisterResponse();
+        if (employeeService.existsByEmployeeLoginId(employeeLoginId)) {
+            response.setCode(HttpStatus.BAD_REQUEST.value());
+            response.setMessage(new MessageResponse(
+                    MessageConstants.ER003, List.of("アカウント名")
+            ));
+        } else {
+            response.setCode(HttpStatus.OK.value());
+        }
+        return response;
+    }
+
+    @GetMapping("/validate-refs")
+    public EmployeeRegisterResponse validateRefs(
+            @RequestParam(value = "departmentId", required = false) Long departmentId,
+            @RequestParam(value = "certificationId", required = false) Long certificationId
+    ) {
+        EmployeeRegisterResponse response = new EmployeeRegisterResponse();
+        MessageResponse error = employeeService.validateRefs(departmentId, certificationId);
+
+        if (error != null) {
+            response.setCode(HttpStatus.BAD_REQUEST.value());
+            response.setMessage(error);
+        } else {
+            response.setCode(HttpStatus.OK.value());
+        }
+        return response;
+    }
+
+
+
+
+
+
+
+
+
+
+    /**
      * API lấy chi tiết 1 nhân viên theo employee_id (ADM003 / khởi tạo ADM004).
      *
      * URL: GET /employee/{employeeId}

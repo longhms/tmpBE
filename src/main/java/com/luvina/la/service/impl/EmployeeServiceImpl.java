@@ -132,6 +132,19 @@ public class EmployeeServiceImpl implements EmployeeService {
             return buildErrorResponse(MessageConstants.ER015);
         }
     }
+    /**
+     * check tồn tại phòng ban và
+     * */
+    @Override
+    public MessageResponse validateRefs(Long departmentId, Long certificationId) {
+        if (departmentId != null && !departmentRepository.existsById(departmentId)) {
+            return new MessageResponse(MessageConstants.ER004, List.of("グループ"));
+        }
+        if (certificationId != null && !certificationRepository.existsById(certificationId)) {
+            return new MessageResponse(MessageConstants.ER004, List.of("資格"));
+        }
+        return null;
+    }
 
     /**
      * Lấy thông tin chi tiết của 1 nhân viên theo id.
@@ -215,10 +228,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         return response;
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    //  ADD / UPDATE / DELETE
-    // ══════════════════════════════════════════════════════════════════
-
     /**
      * Thêm mới 1 nhân viên cùng danh sách chứng chỉ (transactional).
      *
@@ -252,6 +261,21 @@ public class EmployeeServiceImpl implements EmployeeService {
             return buildRegisterErrorResponse(MessageConstants.ER015, Collections.emptyList());
         }
     }
+
+    @Override
+    public boolean existsByEmployeeLoginId(String employeeLoginId) {
+        return employeeRepository.existsByEmployeeLoginId(employeeLoginId);
+    }
+
+
+
+
+
+
+
+
+
+
 
     /**
      * Cập nhật 1 nhân viên. login_id không đổi, password rỗng → giữ nguyên.

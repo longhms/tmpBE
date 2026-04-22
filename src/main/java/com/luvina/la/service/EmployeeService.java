@@ -5,10 +5,7 @@ package com.luvina.la.service;
  * [EmployeeService.java], [Apr ,2026] [ntlong]
  */
 
-import com.luvina.la.payload.EmployeeDetailResponse;
-import com.luvina.la.payload.EmployeeListResponse;
-import com.luvina.la.payload.EmployeeRegisterResponse;
-import com.luvina.la.payload.EmployeeRequest;
+import com.luvina.la.payload.*;
 
 /**
  * Interface Service cho Employee.
@@ -54,4 +51,15 @@ public interface EmployeeService {
      * Không cho xoá admin (ER020), không tồn tại (ER014).
      */
     EmployeeRegisterResponse deleteEmployee(Long employeeId);
+
+    /**
+    * check trùng employeeLoginId
+    * */
+    boolean existsByEmployeeLoginId(String employeeLoginId);
+
+    /**
+     * check còn tồn tại phòng ban hoặc chứng chỉ tiếng Nhật.
+     *
+     * */
+    MessageResponse validateRefs(Long departmentId, Long certificationId);
 }
