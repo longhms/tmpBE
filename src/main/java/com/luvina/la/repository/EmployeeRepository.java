@@ -23,8 +23,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     Optional<Employee> findByEmployeeLoginId(String employeeLoginId);
 
-    Optional<Employee> findByEmployeeId(Long employeeId);
-
     /**
      * Kiểm tra login_id đã tồn tại chưa (dùng khi add).
      */
@@ -94,60 +92,4 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             @Param("offset") Integer offset,
             @Param("limit") Integer limit);
 
-    /**
-     * Lấy thông tin chi tiết của 1 nhân viên theo employee_id (loại trừ admin).
-     *
-     * Join với departments để lấy tên phòng ban.
-     * Trả về 1 dòng duy nhất (hoặc rỗng nếu không tìm thấy).
-     *
-     * Các cột trả về:
-     *  [0] employee_id
-     *  [1] employee_login_id
-     *  [2] department_id
-     *  [3] department_name
-     *  [4] employee_name
-     *  [5] employee_name_kana
-     *  [6] employee_birth_date
-     *  [7] employee_email
-     *  [8] employee_telephone
-     */
-    @Query(value =
-        "SELECT " +
-        "  e.employee_id, " +
-        "  e.employee_login_id, " +
-        "  d.department_id, " +
-        "  d.department_name, " +
-        "  e.employee_name, " +
-        "  e.employee_name_kana, " +
-        "  e.employee_birth_date, " +
-        "  e.employee_email, " +
-        "  e.employee_telephone " +
-        "FROM employees e " +
-        "  INNER JOIN departments d ON e.department_id = d.department_id " +
-        "WHERE e.employee_id = :employeeId " +
-        "  AND e.employee_login_id != 'admin'",
-        nativeQuery = true)
-    List<Object[]> findEmployeeDetailById(@Param("employeeId") Long employeeId);
-
-    /**
-     * Lấy danh sách chứng chỉ của 1 nhân viên, sắp xếp theo certification_level DESC.
-     *
-     * Các cột trả về:
-     *  [0] certification_id
-     *  [1] start_date
-     *  [2] end_date
-     *  [3] score
-     */
-    @Query(value =
-        "SELECT " +
-        "  c.certification_id, " +
-        "  ec.start_date, " +
-        "  ec.end_date, " +
-        "  ec.score " +
-        "FROM employees_certifications ec " +
-        "  INNER JOIN certifications c ON ec.certification_id = c.certification_id " +
-        "WHERE ec.employee_id = :employeeId " +
-        "ORDER BY c.certification_level DESC",
-        nativeQuery = true)
-    List<Object[]> findCertificationsByEmployeeId(@Param("employeeId") Long employeeId);
 }

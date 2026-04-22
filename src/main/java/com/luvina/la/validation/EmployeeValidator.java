@@ -11,6 +11,7 @@ import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.repository.CertificationRepository;
 import com.luvina.la.repository.DepartmentRepository;
 import com.luvina.la.repository.EmployeeRepository;
+import com.luvina.la.config.Constants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import static com.luvina.la.config.Constants.*;
 
 /**
  * Validator cho chức năng thêm mới / cập nhật nhân viên (ADM004).
@@ -37,42 +40,6 @@ import java.util.regex.Pattern;
 @Component
 @RequiredArgsConstructor
 public class EmployeeValidator {
-
-    // ── Các giới hạn độ dài ──
-    private static final int MAX_LEN_LOGIN_ID = 50;
-    private static final int MAX_LEN_NAME = 125;
-    private static final int MAX_LEN_EMAIL = 125;
-    private static final int MAX_LEN_PHONE = 50;
-    private static final int MIN_LEN_PASSWORD = 8;
-    private static final int MAX_LEN_PASSWORD = 50;
-    private static final int MAX_LEN_SCORE = 3;
-
-    // ── Các tên field tiếng Nhật (dùng đổ vào {0} trong message) ──
-    private static final String FIELD_LOGIN_ID = "アカウント名";
-    private static final String FIELD_PASSWORD = "パスワード";
-    private static final String FIELD_DEPARTMENT = "グループ";
-    private static final String FIELD_NAME = "氏名";
-    private static final String FIELD_NAME_KANA = "カタカナ氏名";
-    private static final String FIELD_BIRTH_DATE = "生年月日";
-    private static final String FIELD_EMAIL = "メールアドレス";
-    private static final String FIELD_PHONE = "電話番号";
-    private static final String FIELD_CERTIFICATION = "資格";
-    private static final String FIELD_START_DATE = "資格交付日";
-    private static final String FIELD_END_DATE = "失効日";
-    private static final String FIELD_SCORE = "点数";
-
-    // ── Các pattern regex ──
-    /** login_id: bắt đầu = chữ/underscore, các ký tự còn lại = [a-zA-Z0-9_] */
-    private static final Pattern LOGIN_ID_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");
-    /** password: chỉ half-size ASCII có thể in ra (loại khoảng trắng) */
-    private static final Pattern HALF_SIZE_PATTERN = Pattern.compile("^[\\x21-\\x7E]+$");
-    /** katakana (kèm dấu ー và khoảng trắng fullwidth) */
-    private static final Pattern KATAKANA_PATTERN = Pattern.compile("^[\\u30A0-\\u30FF\\uFF65-\\uFF9F\\s]+$");
-    /** chỉ digit + optional dấu chấm */
-    private static final Pattern SCORE_PATTERN = Pattern.compile("^\\d+(\\.\\d+)?$");
-    /** date yyyy/MM/dd (validate lexical), ngữ nghĩa validate qua DateTimeFormatter STRICT */
-    private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("uuuu/MM/dd").withResolverStyle(ResolverStyle.STRICT);
 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;

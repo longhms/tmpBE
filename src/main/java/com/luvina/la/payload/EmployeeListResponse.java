@@ -9,7 +9,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.luvina.la.dto.EmployeeListDTO;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -37,4 +39,34 @@ public class EmployeeListResponse {
 
     /** Thong tin loi (code + params) */
     private MessageResponse message;
+
+    /** Response thành công (code = 200) */
+    public static EmployeeListResponse success(Long totalRecords, List<EmployeeListDTO> employees) {
+        EmployeeListResponse res = new EmployeeListResponse();
+        res.code = HttpStatus.OK.value();
+        res.totalRecords = totalRecords;
+        res.employees = employees;
+        return res;
+    }
+
+    /** Response lỗi hệ thống (code = 500) */
+    public static EmployeeListResponse error(String errorCode, List<String> params) {
+        EmployeeListResponse res = new EmployeeListResponse();
+        res.code = HttpStatus.INTERNAL_SERVER_ERROR.value();
+        res.message = new MessageResponse(errorCode, params);
+        return res;
+    }
+
+    /** Overload cho trường hợp lỗi không có params */
+    public static EmployeeListResponse error(String errorCode) {
+        return error(errorCode, Collections.emptyList());
+    }
+
+    /** Response lỗi validate input (code = 400) — dùng ở Controller */
+    public static EmployeeListResponse badRequest(String errorCode, List<String> params) {
+        EmployeeListResponse res = new EmployeeListResponse();
+        res.code = HttpStatus.BAD_REQUEST.value();
+        res.message = new MessageResponse(errorCode, params);
+        return res;
+    }
 }

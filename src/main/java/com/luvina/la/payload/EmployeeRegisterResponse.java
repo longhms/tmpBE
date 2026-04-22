@@ -8,6 +8,10 @@ package com.luvina.la.payload;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Response cho các API thay đổi dữ liệu Employee:
@@ -32,4 +36,43 @@ public class EmployeeRegisterResponse {
 
     /** Thông tin message (code + params) - cả success lẫn error đều set */
     private MessageResponse message;
+
+    /** Response thành công cho add (code = 200, kèm MSG001/002/003) */
+    public static EmployeeRegisterResponse success(Long employeeId, String messageCode) {
+        EmployeeRegisterResponse res = ok();
+        res.employeeId = employeeId;
+        res.message = new MessageResponse(messageCode, Collections.emptyList());
+        return res;
+    }
+
+    /** Response OK đơn giản (check trùng login, validate refs) */
+    public static EmployeeRegisterResponse ok() {
+        EmployeeRegisterResponse res = new EmployeeRegisterResponse();
+        res.code = HttpStatus.OK.value();
+        return res;
+    }
+
+    /** Response lỗi validate input (code = 400) */
+    public static EmployeeRegisterResponse badRequest(String errorCode, List<String> params) {
+        EmployeeRegisterResponse res = new EmployeeRegisterResponse();
+        res.code = HttpStatus.BAD_REQUEST.value();
+        res.message = new MessageResponse(errorCode, params);
+        return res;
+    }
+
+    /** Response lỗi validate input (dùng MessageResponse có sẵn) */
+    public static EmployeeRegisterResponse badRequest(MessageResponse message) {
+        EmployeeRegisterResponse res = new EmployeeRegisterResponse();
+        res.code = HttpStatus.BAD_REQUEST.value();
+        res.message = message;
+        return res;
+    }
+
+    /** Response lỗi hệ thống (code = 500) */
+    public static EmployeeRegisterResponse error(String errorCode) {
+        EmployeeRegisterResponse res = new EmployeeRegisterResponse();
+        res.code = HttpStatus.INTERNAL_SERVER_ERROR.value();
+        res.message = new MessageResponse(errorCode, Collections.emptyList());
+        return res;
+    }
 }

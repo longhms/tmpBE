@@ -11,7 +11,7 @@ spring:
     # jdbc properties to connect to database
     jdbcUrl: jdbc:mysql://localhost:3306/user-manage?createDatabaseIfNotExist=true
     username: root
-    password: LA.luvina1234
+    password:
     isAutoCommit: false
     connectionTimeout: 10000
     maximumPoolSize: 20
