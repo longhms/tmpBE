@@ -11,17 +11,14 @@ import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.repository.CertificationRepository;
 import com.luvina.la.repository.DepartmentRepository;
 import com.luvina.la.repository.EmployeeRepository;
-import com.luvina.la.config.Constants;
+import com.luvina.la.payload.ValidationErrorResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import static com.luvina.la.config.Constants.*;
 
@@ -30,7 +27,7 @@ import static com.luvina.la.config.Constants.*;
  *
  * Mỗi method validate* trả về:
  *   - null             -> hợp lệ
- *   - ValidationError  -> mã lỗi đầu tiên gặp phải (stop-on-first-error theo từng field)
+ *   - ValidationErrorResponse  -> mã lỗi đầu tiên gặp phải (stop-on-first-error theo từng field)
  *
  * Thứ tự validate tổng thể: từ trên xuống dưới theo layout màn hình ADM004
  * (loginId -> password -> department -> name -> kana -> birthDate -> email -> phone -> certifications).
@@ -39,7 +36,7 @@ import static com.luvina.la.config.Constants.*;
  */
 @Component
 @RequiredArgsConstructor
-public class EmployeeValidator {
+public class EmployeeValidation {
 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
@@ -50,15 +47,15 @@ public class EmployeeValidator {
      *
      * @param request    Dữ liệu gửi lên
      * @param isUpdate   true nếu là update (bỏ qua password nếu null/empty, skip check duplicate login_id)
-     * @return           ValidationError đầu tiên tìm thấy, null nếu hợp lệ
+     * @return           ValidationErrorResponse đầu tiên tìm thấy, null nếu hợp lệ
      */
-    public ValidationError validate(EmployeeRequest request, boolean isUpdate) {
-        ValidationError err;
+    public ValidationErrorResponse validate(EmployeeRequest request, boolean isUpdate) {
+        ValidationErrorResponse err;
 
-        // Login ID
+        // Validate loginId:bat buoc nhap + kiem tra maxlength + check trung
         if ((err = validateLoginId(request.getEmployeeLoginId(), isUpdate)) != null) return err;
 
-        // Password: khi update, null/empty => bỏ qua (không đổi mật khẩu)
+        // Validate password:bat buoc nhap + kiem tra maxlength + check định dạng
         boolean skipPwd = isUpdate
                 && (request.getEmployeeLoginPassword() == null
                     || request.getEmployeeLoginPassword().isEmpty());
@@ -66,19 +63,22 @@ public class EmployeeValidator {
             if ((err = validatePassword(request.getEmployeeLoginPassword())) != null) return err;
         }
 
-        // Department
+        // Validate department:bat buoc nhap + kiem tra ton tai
         if ((err = validateDepartment(request.getDepartmentId())) != null) return err;
 
-        // Name / Kana / Birth
+        // Validate name:bat buoc nhap + kiem tra maxlength
         if ((err = validateRequiredMaxLen(request.getEmployeeName(), MAX_LEN_NAME, FIELD_NAME)) != null) return err;
+        // Validate kana:bat buoc nhap + kiem tra maxlength + check định dạng
         if ((err = validateNameKana(request.getEmployeeNameKana())) != null) return err;
+        // Validate birthDate:bat buoc nhap + kiem tra định dạng
         if ((err = validateBirthDate(request.getEmployeeBirthDate())) != null) return err;
 
-        // Email / Phone
+        // Validate email:bat buoc nhap + kiem tra maxlength + check định dạng
         if ((err = validateEmail(request.getEmployeeEmail())) != null) return err;
+        // Validate phone:bat buoc nhap + kiem tra maxlength + check định dạng
         if ((err = validatePhone(request.getEmployeeTelephone())) != null) return err;
 
-        // Certifications (optional – nhưng nếu có row thì tất cả field trong row bắt buộc)
+        // Validate certifications:bat buoc nhap + kiem tra maxlength + check định dạng
         if (request.getCertifications() != null) {
             for (EmployeeCertificationRequest cert : request.getCertifications()) {
                 if ((err = validateCertification(cert)) != null) return err;
@@ -95,7 +95,7 @@ public class EmployeeValidator {
      * @param maxLen    Do dai toi da cho phep
      * @param fieldName Ten field (de do vao {0} cua message)
      */
-    private ValidationError validateRequiredMaxLen(String value, int maxLen, String fieldName) {
+    private ValidationErrorResponse validateRequiredMaxLen(String value, int maxLen, String fieldName) {
         if (isEmpty(value)) return error(MessageConstants.ER001, fieldName);
         if (value.length() > maxLen) {
             return error(MessageConstants.ER006, String.valueOf(maxLen), fieldName);
@@ -103,8 +103,8 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── login_id ──
-    private ValidationError validateLoginId(String loginId, boolean isUpdate) {
+    //login_id: bat buoc nhap + kiem tra maxlength + check trung
+    private ValidationErrorResponse validateLoginId(String loginId, boolean isUpdate) {
         if (isEmpty(loginId)) return error(MessageConstants.ER001, FIELD_LOGIN_ID);
         if (loginId.length() > MAX_LEN_LOGIN_ID) {
             return error(MessageConstants.ER006, String.valueOf(MAX_LEN_LOGIN_ID), FIELD_LOGIN_ID);
@@ -119,8 +119,8 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── password ──
-    private ValidationError validatePassword(String pwd) {
+    //password: bat buoc nhap + kiem tra maxlength + check định dạng
+    private ValidationErrorResponse validatePassword(String pwd) {
         if (isEmpty(pwd)) return error(MessageConstants.ER001, FIELD_PASSWORD);
         if (pwd.length() < MIN_LEN_PASSWORD || pwd.length() > MAX_LEN_PASSWORD) {
             return error(MessageConstants.ER007, FIELD_PASSWORD,
@@ -132,8 +132,8 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── department_id ──
-    private ValidationError validateDepartment(Long departmentId) {
+    // department_id: bat buoc nhap + kiem tra ton tai
+    private ValidationErrorResponse validateDepartment(Long departmentId) {
         if (departmentId == null || departmentId <= 0) {
             return error(MessageConstants.ER002, FIELD_DEPARTMENT);
         }
@@ -143,8 +143,8 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── name_kana ──
-    private ValidationError validateNameKana(String kana) {
+    // name_kana: bat buoc nhap + kiem tra maxlength + check định dạng
+    private ValidationErrorResponse validateNameKana(String kana) {
         if (isEmpty(kana)) return error(MessageConstants.ER001, FIELD_NAME_KANA);
         if (kana.length() > MAX_LEN_NAME) {
             return error(MessageConstants.ER006, String.valueOf(MAX_LEN_NAME), FIELD_NAME_KANA);
@@ -155,15 +155,15 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── birth_date ──
-    private ValidationError validateBirthDate(String birth) {
+    // birth_date: bat buoc nhap + kiem tra định dạng
+    private ValidationErrorResponse validateBirthDate(String birth) {
         if (isEmpty(birth)) return error(MessageConstants.ER001, FIELD_BIRTH_DATE);
         if (parseDate(birth) == null) return error(MessageConstants.ER011, FIELD_BIRTH_DATE);
         return null;
     }
 
-    // ── email ──
-    private ValidationError validateEmail(String email) {
+    // email: bat buoc nhap + kiem tra maxlength + check định dạng
+    private ValidationErrorResponse validateEmail(String email) {
         if (isEmpty(email)) return error(MessageConstants.ER001, FIELD_EMAIL);
         if (email.length() > MAX_LEN_EMAIL) {
             return error(MessageConstants.ER006, String.valueOf(MAX_LEN_EMAIL), FIELD_EMAIL);
@@ -171,8 +171,8 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── phone ──
-    private ValidationError validatePhone(String phone) {
+    // phone: bat buoc nhap + kiem tra maxlength + check định dạng
+    private ValidationErrorResponse validatePhone(String phone) {
         if (isEmpty(phone)) return error(MessageConstants.ER001, FIELD_PHONE);
         if (phone.length() > MAX_LEN_PHONE) {
             return error(MessageConstants.ER006, String.valueOf(MAX_LEN_PHONE), FIELD_PHONE);
@@ -183,11 +183,11 @@ public class EmployeeValidator {
         return null;
     }
 
-    // ── certification row ──
-    private ValidationError validateCertification(EmployeeCertificationRequest cert) {
+    // certification:bat buoc nhap + kiem tra maxlength + check định dạng
+    private ValidationErrorResponse validateCertification(EmployeeCertificationRequest cert) {
         if (cert == null) return null;
 
-        // certification_id
+        // certification_id: bat buoc nhap + kiem tra ton tai
         if (cert.getCertificationId() == null || cert.getCertificationId() <= 0) {
             return error(MessageConstants.ER002, FIELD_CERTIFICATION);
         }
@@ -195,26 +195,42 @@ public class EmployeeValidator {
             return error(MessageConstants.ER004, FIELD_CERTIFICATION);
         }
 
-        // start_date
+        // start_date:bat buoc nhap + kiem tra định dạng
         if (isEmpty(cert.getStartDate())) return error(MessageConstants.ER001, FIELD_START_DATE);
         LocalDate start = parseDate(cert.getStartDate());
         if (start == null) return error(MessageConstants.ER011, FIELD_START_DATE);
 
-        // end_date
+        // end_date: bat buoc nhap + kiem tra định dạng
         if (isEmpty(cert.getEndDate())) return error(MessageConstants.ER001, FIELD_END_DATE);
         LocalDate end = parseDate(cert.getEndDate());
         if (end == null) return error(MessageConstants.ER011, FIELD_END_DATE);
 
-        // end_date > start_date
+        // end_date > start_date: kiem tra ngay ket thuc lon hon ngay bat dau
         if (!end.isAfter(start)) return error(MessageConstants.ER012, Collections.emptyList());
 
-        // score
+        // score: bat buoc nhap + kiem tra maxlength + check định dạng
         if (isEmpty(cert.getScore())) return error(MessageConstants.ER001, FIELD_SCORE);
+        if (cert.getScore().length() > MAX_LEN_SCORE) {
+            return error(MessageConstants.ER006, String.valueOf(MAX_LEN_SCORE), FIELD_SCORE);
+        }
         if (!SCORE_PATTERN.matcher(cert.getScore()).matches()) {
             return error(MessageConstants.ER008, FIELD_SCORE);
         }
-        if (cert.getScore().length() > MAX_LEN_SCORE) {
-            return error(MessageConstants.ER006, String.valueOf(MAX_LEN_SCORE), FIELD_SCORE);
+        return null;
+    }
+
+    /**
+     * Check tồn tại department / certification (dùng cho endpoint /validate-refs).
+     * Tái sử dụng logic existsById đã có sẵn để không duplicate.
+     *
+     * @return ValidationErrorResponse (ER004) nếu không tồn tại, null nếu hợp lệ
+     */
+    public ValidationErrorResponse validateRefs(Long departmentId, Long certificationId) {
+        if (departmentId != null && !departmentRepository.existsById(departmentId)) {
+            return error(MessageConstants.ER004, FIELD_DEPARTMENT);
+        }
+        if (certificationId != null && !certificationRepository.existsById(certificationId)) {
+            return error(MessageConstants.ER004, FIELD_CERTIFICATION);
         }
         return null;
     }
@@ -230,16 +246,19 @@ public class EmployeeValidator {
             return null;
         }
     }
-
+    
+    // ham kiem tra string null hoac empty
     private boolean isEmpty(String s) {
         return s == null || s.isEmpty();
     }
 
-    private ValidationError error(String code, String... params) {
-        return new ValidationError(code, Arrays.asList(params));
+    // hàm tạo error không tham số
+    private ValidationErrorResponse error(String code, String... params) {
+        return new ValidationErrorResponse(code, Arrays.asList(params));
     }
 
-    private ValidationError error(String code, List<String> params) {
-        return new ValidationError(code, params);
+    //hàm tạo error không có tham số
+    private ValidationErrorResponse error(String code, List<String> params) {
+        return new ValidationErrorResponse(code, params);
     }
 }

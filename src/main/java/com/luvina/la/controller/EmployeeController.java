@@ -33,8 +33,8 @@ import java.util.List;
  * - Kiểm tra tồn tại department / certification
  * - Thêm mới nhân viên
  *
- * Validate được thực hiện tại đây (Controller) trước khi gọi Service.
- * Nếu dữ liệu không hợp lệ, trả về response lỗi ngay (không gọi Service).
+ * Validate query param (sort, offset, limit) thực hiện tại Controller.
+ * Validate nghiệp vụ (addEmployee) thực hiện trong Service qua EmployeeValidator.
  *
  * @author [ntlong]
  */
@@ -116,6 +116,9 @@ public class EmployeeController {
                 : EmployeeRegisterResponse.ok();
     }
 
+    /**
+     * API check tồn tại department và certification
+     */
     @GetMapping("/validate-refs")
     public EmployeeRegisterResponse validateRefs(
             @RequestParam(value = "departmentId", required = false) Long departmentId,

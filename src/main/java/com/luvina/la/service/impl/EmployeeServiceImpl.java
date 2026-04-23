@@ -21,9 +21,9 @@ import com.luvina.la.repository.DepartmentRepository;
 import com.luvina.la.repository.EmployeeCertificationRepository;
 import com.luvina.la.repository.EmployeeRepository;
 import com.luvina.la.service.EmployeeService;
-import com.luvina.la.validation.EmployeeValidator;
+import com.luvina.la.validation.EmployeeValidation;
 import com.luvina.la.validation.ValidateUtil;
-import com.luvina.la.validation.ValidationError;
+import com.luvina.la.payload.ValidationErrorResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +56,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final DepartmentRepository departmentRepository;
     private final CertificationRepository certificationRepository;
     private final ValidateUtil validateUtil;
-    private final EmployeeValidator employeeValidator;
+    private final EmployeeValidation employeeValidation;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -125,18 +125,14 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
     /**
      * Kiểm tra tồn tại department và certification trong DB.
+     * Delegate sang EmployeeValidator để tránh duplicate logic existsById.
      *
      * @return MessageResponse chứa ER004 nếu không tồn tại, null nếu hợp lệ
      */
     @Override
     public MessageResponse validateRefs(Long departmentId, Long certificationId) {
-        if (departmentId != null && !departmentRepository.existsById(departmentId)) {
-            return new MessageResponse(MessageConstants.ER004, List.of("グループ"));
-        }
-        if (certificationId != null && !certificationRepository.existsById(certificationId)) {
-            return new MessageResponse(MessageConstants.ER004, List.of("資格"));
-        }
-        return null;
+        ValidationErrorResponse err = employeeValidation.validateRefs(departmentId, certificationId);
+        return err == null ? null : new MessageResponse(err.getCode(), err.getParams());
     }
 
     /**
@@ -153,7 +149,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeRegisterResponse addEmployee(EmployeeRequest request) {
         try {
             // 1. Validate
-            ValidationError err = employeeValidator.validate(request, false);
+            ValidationErrorResponse err = employeeValidation.validate(request, false);
             if (err != null) return EmployeeRegisterResponse.badRequest(err.getCode(), err.getParams());
 
             // 2. Build + save employee
@@ -180,13 +176,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 
 
     /**
-     * Password được xử lý riêng (hash ở caller).
+     * lấy dữ liệu từ EmployeeRequest
+     * Password được xử lý riêng ở addEmployee.
      */
     private void applyRequestToEmployee(Employee employee, EmployeeRequest req) {
         employee.setEmployeeLoginId(req.getEmployeeLoginId());
         employee.setEmployeeName(req.getEmployeeName());
         employee.setEmployeeNameKana(req.getEmployeeNameKana());
-        employee.setEmployeeBirthDate(employeeValidator.parseDate(req.getEmployeeBirthDate()));
+        employee.setEmployeeBirthDate(employeeValidation.parseDate(req.getEmployeeBirthDate()));
         employee.setEmployeeEmail(req.getEmployeeEmail());
         employee.setEmployeeTelephone(req.getEmployeeTelephone());
 
@@ -206,8 +203,8 @@ public class EmployeeServiceImpl implements EmployeeService {
             ec.setEmployee(employee);
             Certification cert = certificationRepository.getReferenceById(c.getCertificationId());
             ec.setCertification(cert);
-            ec.setStartDate(employeeValidator.parseDate(c.getStartDate()));
-            ec.setEndDate(employeeValidator.parseDate(c.getEndDate()));
+            ec.setStartDate(employeeValidation.parseDate(c.getStartDate()));
+            ec.setEndDate(employeeValidation.parseDate(c.getEndDate()));
             String scoreStr = c.getScore();
             if (scoreStr != null && !scoreStr.isBlank()) {
                 ec.setScore(new BigDecimal(scoreStr));
