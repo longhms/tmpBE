@@ -5,17 +5,20 @@ package com.luvina.la.service.impl;
  * [EmployeeServiceImpl.java], [Apr ,2026] [ntlong]
  */
 
+import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
+import com.luvina.la.dto.CertificationDetailDTO;
+import com.luvina.la.dto.EmployeeDetailDTO;
 import com.luvina.la.dto.EmployeeListDTO;
 import com.luvina.la.entity.Certification;
 import com.luvina.la.entity.Department;
 import com.luvina.la.entity.Employee;
 import com.luvina.la.entity.EmployeeCertification;
+import com.luvina.la.exception.BusinessException;
 import com.luvina.la.payload.EmployeeCertificationRequest;
+import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
-import com.luvina.la.payload.EmployeeRegisterResponse;
 import com.luvina.la.payload.EmployeeRequest;
-import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.repository.CertificationRepository;
 import com.luvina.la.repository.DepartmentRepository;
 import com.luvina.la.repository.EmployeeCertificationRepository;
@@ -23,7 +26,6 @@ import com.luvina.la.repository.EmployeeRepository;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.EmployeeValidation;
 import com.luvina.la.validation.ValidateUtil;
-import com.luvina.la.payload.ValidationErrorResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +34,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Triển khai EmployeeService - xử lý business logic cho chức năng Employee.
@@ -125,53 +130,114 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
     /**
      * Kiểm tra tồn tại department và certification trong DB.
-     * Delegate sang EmployeeValidator để tránh duplicate logic existsById.
-     *
-     * @return MessageResponse chứa ER004 nếu không tồn tại, null nếu hợp lệ
+     * Delegate sang EmployeeValidation. Không tồn tại → throw BusinessException(ER004).
      */
     @Override
-    public MessageResponse validateRefs(Long departmentId, Long certificationId) {
-        ValidationErrorResponse err = employeeValidation.validateRefs(departmentId, certificationId);
-        return err == null ? null : new MessageResponse(err.getCode(), err.getParams());
+    public void validateRefs(Long departmentId, Long certificationId) {
+        employeeValidation.validateRefs(departmentId, certificationId);
     }
 
     /**
      * Thêm mới 1 nhân viên cùng danh sách chứng chỉ (transactional).
      *
      * Luồng: validate → hash password → build Employee entity → save Employee →
-     * insert từng chứng chỉ. Trả về MSG001 + employee_id mới.
+     * insert từng chứng chỉ. Lỗi → throw BusinessException, @Transactional rollback.
      *
      * @param request Dữ liệu gửi lên từ ADM005
-     * @return EmployeeRegisterResponse (200 + MSG001, hoặc 500 + mã lỗi)
+     * @return employee_id vừa tạo
      */
     @Override
-    @Transactional
-    public EmployeeRegisterResponse addEmployee(EmployeeRequest request) {
-        try {
-            // 1. Validate
-            ValidationErrorResponse err = employeeValidation.validate(request, false);
-            if (err != null) return EmployeeRegisterResponse.badRequest(err.getCode(), err.getParams());
+    @Transactional(rollbackFor = Exception.class)
+    public Long addEmployee(EmployeeRequest request) {
+        employeeValidation.validate(request, false);
 
-            // 2. Build + save employee
-            Employee employee = new Employee();
-            applyRequestToEmployee(employee, request);
-            employee.setEmployeeLoginPassword(passwordEncoder.encode(request.getEmployeeLoginPassword()));
-            Employee saved = employeeRepository.save(employee);
+        Employee employee = new Employee();
+        applyRequestToEmployee(employee, request);
 
-            // 3. Insert certifications (nếu có)
-            saveCertifications(saved, request.getCertifications());
+        employee.setEmployeeLoginPassword(passwordEncoder.encode(request.getEmployeeLoginPassword()));
+        Employee saveEmployee = employeeRepository.save(employee);
 
-            // 4. Response thành công
-            return EmployeeRegisterResponse.success(saved.getEmployeeId(), MessageConstants.MSG001);
-        } catch (Exception e) {
-            log.error("Error adding employee", e);
-            return EmployeeRegisterResponse.error(MessageConstants.ER015);
-        }
+        saveCertifications(saveEmployee, request.getCertifications());
+
+        return saveEmployee.getEmployeeId();
     }
 
     @Override
     public boolean existsByEmployeeLoginId(String employeeLoginId) {
         return employeeRepository.existsByEmployeeLoginId(employeeLoginId);
+    }
+
+    /**
+     * Lấy chi tiết nhân viên cho ADM003.
+     *
+     * Luồng:
+     *   - Tìm employee theo id -> không có → throw BusinessException(ER013).
+     *   - Map entity -> EmployeeDetailDTO (không trả password).
+     *   - Certifications: sort theo certification_level DESC (cấp cao đứng trước).
+     *
+     * readOnly = true: chỉ đọc DB, cho phép Hibernate tối ưu + truy cập lazy collection.
+     * Lỗi hệ thống (SQL, cast,…) sẽ rơi về GlobalExceptionHandler (500 ER015).
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeDetailResponse getEmployeeDetail(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new BusinessException(MessageConstants.ER013));
+
+        EmployeeDetailDTO dto = toDetailDTO(employee);
+        return EmployeeDetailResponse.success(dto);
+    }
+
+    /**
+     * Map Employee entity -> EmployeeDetailDTO.
+     * Sort certifications theo certification_level DESC.
+     */
+    private EmployeeDetailDTO toDetailDTO(Employee employee) {
+        EmployeeDetailDTO dto = new EmployeeDetailDTO();
+        dto.setEmployeeId(employee.getEmployeeId());
+        dto.setEmployeeLoginId(employee.getEmployeeLoginId());
+        dto.setEmployeeName(employee.getEmployeeName());
+        dto.setEmployeeNameKana(employee.getEmployeeNameKana());
+        dto.setEmployeeBirthDate(formatDate(employee.getEmployeeBirthDate()));
+        dto.setEmployeeEmail(employee.getEmployeeEmail());
+        dto.setEmployeeTelephone(employee.getEmployeeTelephone());
+
+        Department dept = employee.getDepartment();
+        if (dept != null) {
+            dto.setDepartmentId(dept.getDepartmentId());
+            dto.setDepartmentName(dept.getDepartmentName());
+        }
+
+        List<EmployeeCertification> certs = employee.getCertifications();
+        List<CertificationDetailDTO> certDtos = (certs == null ? Collections.<EmployeeCertification>emptyList() : certs)
+                .stream()
+                .filter(ec -> ec.getCertification() != null)
+                .sorted(Comparator.comparing(
+                        (EmployeeCertification ec) -> ec.getCertification().getCertificationLevel(),
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(this::toCertDTO)
+                .collect(Collectors.toList());
+        dto.setCertifications(certDtos);
+
+        return dto;
+    }
+
+    /** Map 1 EmployeeCertification -> CertificationDetailDTO */
+    private CertificationDetailDTO toCertDTO(EmployeeCertification ec) {
+        Certification c = ec.getCertification();
+        return new CertificationDetailDTO(
+                c.getCertificationId(),
+                c.getCertificationLevel(),
+                c.getCertificationName(),
+                formatDate(ec.getStartDate()),
+                formatDate(ec.getEndDate()),
+                ec.getScore()
+        );
+    }
+
+    /** Format LocalDate -> yyyy/MM/dd, null-safe */
+    private String formatDate(LocalDate date) {
+        return date == null ? null : date.format(Constants.DATE_FORMAT);
     }
 
 

@@ -7,14 +7,16 @@ package com.luvina.la.controller;
 
 import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
+import com.luvina.la.exception.BusinessException;
+import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
 import com.luvina.la.payload.EmployeeRegisterResponse;
 import com.luvina.la.payload.EmployeeRequest;
-import com.luvina.la.payload.MessageResponse;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -111,9 +113,10 @@ public class EmployeeController {
     * */
     @GetMapping("/check-employee-login-id")
     public EmployeeRegisterResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
-        return employeeService.existsByEmployeeLoginId(employeeLoginId)
-                ? EmployeeRegisterResponse.badRequest(MessageConstants.ER003, List.of("アカウント名"))
-                : EmployeeRegisterResponse.ok();
+        if (employeeService.existsByEmployeeLoginId(employeeLoginId)){
+            throw new BusinessException(MessageConstants.ER003, Constants.FIELD_LOGIN_ID);
+        }
+        return EmployeeRegisterResponse.ok();
     }
 
     /**
@@ -124,21 +127,34 @@ public class EmployeeController {
             @RequestParam(value = "departmentId", required = false) Long departmentId,
             @RequestParam(value = "certificationId", required = false) Long certificationId
     ) {
-        MessageResponse error = employeeService.validateRefs(departmentId, certificationId);
+        employeeService.validateRefs(departmentId, certificationId);
 
-        return error != null
-                ? EmployeeRegisterResponse.badRequest(error)
-                : EmployeeRegisterResponse.ok();
+        return EmployeeRegisterResponse.ok();
     }
 
 
     /**
+     * API lấy chi tiết nhân viên (ADM003).
+     * Không tồn tại → BusinessException(ER013) → GlobalExceptionHandler trả 400.
+     *
+     * @param employeeId ID nhân viên lấy từ path
+     * @return EmployeeDetailResponse chứa thông tin chi tiết nhân viên
+     */
+    @GetMapping("/{employeeId}")
+    public EmployeeDetailResponse getEmployeeDetail(@PathVariable("employeeId") Long employeeId) {
+        return employeeService.getEmployeeDetail(employeeId);
+    }
+
+    /**
      * API thêm mới nhân viên (ADM005 -> ADM006).
-     * Toàn bộ validate dữ liệu nằm trong Service (EmployeeValidator).
+     * Validate và lưu DB thực hiện trong Service.
+     * Lỗi validate/nghiệp vụ → BusinessException → GlobalExceptionHandler trả 400.
+     * Lỗi hệ thống → Exception → GlobalExceptionHandler trả 500 ER015.
      */
     @PostMapping
     public EmployeeRegisterResponse addEmployee(@RequestBody EmployeeRequest request) {
-        return employeeService.addEmployee(request);
+        Long id = employeeService.addEmployee(request);
+        return EmployeeRegisterResponse.success(id, MessageConstants.MSG001);
     }
 
 }

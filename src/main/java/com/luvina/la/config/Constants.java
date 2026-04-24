@@ -48,12 +48,16 @@ public class Constants {
     // ── Các pattern regex ──
     /** login_id: bắt đầu = chữ/underscore, các ký tự còn lại = [a-zA-Z0-9_] */
     public static final Pattern LOGIN_ID_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");
-    /** password: chỉ half-size ASCII có thể in ra (loại khoảng trắng) */
+    /** half-size trong ASCII (loại khoảng trắng) */
     public static final Pattern HALF_SIZE_PATTERN = Pattern.compile("^[\\x21-\\x7E]+$");
     /** katakana (kèm dấu ー và khoảng trắng fullwidth) */
     public static final Pattern KATAKANA_PATTERN = Pattern.compile("^[\\u30A0-\\u30FF\\uFF65-\\uFF9F\\s]+$");
     /** chỉ digit + optional dấu chấm */
     public static final Pattern SCORE_PATTERN = Pattern.compile("^\\d+(\\.\\d+)?$");
+    /** pattern email */
+    public static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    /** phone: chỉ digit và dấu gạch ngang */
+    public static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9\\-]+$");
     /** date yyyy/MM/dd (validate lexical), ngữ nghĩa validate qua DateTimeFormatter STRICT */
     public static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("uuuu/MM/dd").withResolverStyle(ResolverStyle.STRICT);

@@ -19,7 +19,8 @@ import java.util.List;
  *   PUT    /employee          (update)  -> MSG002
  *   DELETE /employee/{id}     (delete)  -> MSG003
  *
- * Khi lỗi -> code = 500 + message (ER001, ER003, ER004, ER013, ER014, ER015,…).
+ * Lỗi validate/nghiệp vụ -> code = 400 (ER001, ER003, ER004, ER013, ER014,…).
+ * Lỗi hệ thống            -> code = 500 (ER015).
  *
  * @author [ntlong]
  */
@@ -28,7 +29,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmployeeRegisterResponse {
 
-    /** Mã HTTP status (200 / 500) */
+    /** Mã HTTP status (200 / 400 / 500) */
     private int code;
 
     /** ID nhân viên sau khi thao tác (add: ID mới, update/delete: ID cũ) */
@@ -57,14 +58,6 @@ public class EmployeeRegisterResponse {
         EmployeeRegisterResponse res = new EmployeeRegisterResponse();
         res.code = HttpStatus.BAD_REQUEST.value();
         res.message = new MessageResponse(errorCode, params);
-        return res;
-    }
-
-    /** Response lỗi validate input (dùng MessageResponse có sẵn) */
-    public static EmployeeRegisterResponse badRequest(MessageResponse message) {
-        EmployeeRegisterResponse res = new EmployeeRegisterResponse();
-        res.code = HttpStatus.BAD_REQUEST.value();
-        res.message = message;
         return res;
     }
 

@@ -28,18 +28,24 @@ public interface EmployeeService {
     );
 
     /**
-     * Thêm mới 1 nhân viên (ADM005 -> ADM006). Trả về MSG001 khi thành công.
+     * Thêm mới 1 nhân viên (ADM005 -> ADM006).
+     * Trả về employee_id vừa tạo. Lỗi validate/nghiệp vụ → throw BusinessException.
      */
-    EmployeeRegisterResponse addEmployee(EmployeeRequest request);
+    Long addEmployee(EmployeeRequest request);
 
     /**
-    * check trùng employeeLoginId
-    * */
+     * Lấy chi tiết 1 nhân viên (ADM003). Không tồn tại → throw BusinessException(ER013).
+     */
+    EmployeeDetailResponse getEmployeeDetail(Long employeeId);
+
+    /**
+     * Check trùng employeeLoginId.
+     */
     boolean existsByEmployeeLoginId(String employeeLoginId);
 
     /**
-     * check còn tồn tại phòng ban hoặc chứng chỉ tiếng Nhật.
-     *
-     * */
-    MessageResponse validateRefs(Long departmentId, Long certificationId);
+     * Check tồn tại phòng ban / chứng chỉ tiếng Nhật.
+     * Không tồn tại → throw BusinessException(ER004).
+     */
+    void validateRefs(Long departmentId, Long certificationId);
 }
