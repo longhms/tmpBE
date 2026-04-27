@@ -48,4 +48,9 @@ public interface EmployeeService {
      * Không tồn tại → throw BusinessException(ER004).
      */
     void validateRefs(Long departmentId, Long certificationId);
+
+    /**
+     * Xóa 1 nhân viên. Không tồn tại → ER014. Là admin → ER020.
+     */
+    void deleteEmployee(Long employeeId);
 }

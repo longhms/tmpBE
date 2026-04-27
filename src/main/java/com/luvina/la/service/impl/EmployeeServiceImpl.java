@@ -168,6 +168,26 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
+     * Xóa nhân viên theo ID.
+     * - Không tồn tại → ER014.
+     * - Là admin (loginId = "admin") → ER020.
+     * - Xóa certifications trước (FK constraint), sau đó xóa employee.
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteEmployee(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new BusinessException(MessageConstants.ER014));
+
+        if ("admin".equals(employee.getEmployeeLoginId())) {
+            throw new BusinessException(MessageConstants.ER020);
+        }
+
+        employeeCertificationRepository.deleteByEmployeeId(employeeId);
+        employeeRepository.delete(employee);
+    }
+
+    /**
      * Lấy chi tiết nhân viên cho ADM003.
      *
      * Luồng:

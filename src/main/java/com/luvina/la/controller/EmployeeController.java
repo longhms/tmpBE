@@ -15,6 +15,7 @@ import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -155,6 +156,19 @@ public class EmployeeController {
     public EmployeeRegisterResponse addEmployee(@RequestBody EmployeeRequest request) {
         Long id = employeeService.addEmployee(request);
         return EmployeeRegisterResponse.success(id, MessageConstants.MSG001);
+    }
+
+    /**
+     * API xóa nhân viên (ADM003 -> ADM006).
+     * Không tồn tại → ER014 (400). Là admin → ER020 (400). Lỗi hệ thống → ER015 (500).
+     *
+     * @param employeeId ID nhân viên lấy từ path
+     * @return EmployeeRegisterResponse kèm MSG003 khi thành công
+     */
+    @DeleteMapping("/{employeeId}")
+    public EmployeeRegisterResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
+        employeeService.deleteEmployee(employeeId);
+        return EmployeeRegisterResponse.success(employeeId, MessageConstants.MSG003);
     }
 
 }
