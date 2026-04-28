@@ -1,9 +1,8 @@
-package com.luvina.la.payload;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [EmployeeDetailResponse.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.payload;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.luvina.la.dto.EmployeeDetailDTO;
@@ -14,8 +13,9 @@ import org.springframework.http.HttpStatus;
 /**
  * Response cho API lấy chi tiết 1 nhân viên (ADM003): GET /employee/{id}.
  *
- * Thành công (code = 200) -> trả kèm EmployeeDetailDTO.
- * Các trường hợp lỗi (ER013, ER015,…) do GlobalExceptionHandler trả dưới dạng ApiErrorResponse.
+ * Thành công (code = 200) trả kèm EmployeeDetailDTO.
+ * Các trường hợp lỗi (ER013, ER015,...) được trả qua ApiErrorResponse từ
+ * GlobalExceptionHandler -> response này chỉ giữ shape success.
  *
  * @author [ntlong]
  */
@@ -30,7 +30,12 @@ public class EmployeeDetailResponse {
     /** Thông tin chi tiết nhân viên */
     private EmployeeDetailDTO employee;
 
-    /** Response thành công (code = 200) */
+    /**
+     * Tạo response thành công (code = 200) kèm EmployeeDetailDTO.
+     *
+     * @param employee EmployeeDetailDTO đã map từ entity
+     * @return EmployeeDetailResponse code = 200
+     */
     public static EmployeeDetailResponse success(EmployeeDetailDTO employee) {
         EmployeeDetailResponse res = new EmployeeDetailResponse();
         res.code = HttpStatus.OK.value();

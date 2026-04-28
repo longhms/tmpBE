@@ -1,16 +1,15 @@
-package com.luvina.la.controller;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [EmployeeController.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.controller;
 
 import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
-import com.luvina.la.exception.BusinessException;
+import com.luvina.la.exception.AppException;
 import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
-import com.luvina.la.payload.EmployeeRegisterResponse;
+import com.luvina.la.payload.EmployeeMutationResponse;
 import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
@@ -109,34 +108,42 @@ public class EmployeeController {
     }
 
     /**
-    * API check trùng employee-login-id
-    * Sử dụng EmployeeRegisterResponse để trả về lỗi
-    * */
+     * API check trùng employee-login-id.
+     * Trùng -> throw AppException(ER003) -> GlobalExceptionHandler trả 400.
+     *
+     * @param employeeLoginId Login ID cần kiểm tra
+     * @return EmployeeMutationResponse.ok() nếu chưa trùng
+     */
     @GetMapping("/check-employee-login-id")
-    public EmployeeRegisterResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
+    public EmployeeMutationResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
         if (employeeService.existsByEmployeeLoginId(employeeLoginId)){
-            throw new BusinessException(MessageConstants.ER003, Constants.FIELD_LOGIN_ID);
+            throw new AppException(MessageConstants.ER003, Constants.FIELD_LOGIN_ID);
         }
-        return EmployeeRegisterResponse.ok();
+        return EmployeeMutationResponse.ok();
     }
 
     /**
-     * API check tồn tại department và certification
+     * API khẳng định department và certification tồn tại trong DB.
+     * Dùng cho FE check trước khi submit form (ADM004 / ADM005).
+     * Không tồn tại sẽ throw AppException(ER004) -> GlobalExceptionHandler trả 400.
+     *
+     * @param departmentId    ID phòng ban cần kiểm tra (optional)
+     * @param certificationId ID chứng chỉ cần kiểm tra (optional)
+     * @return EmployeeMutationResponse.ok() nếu tồn tại
      */
-    @GetMapping("/validate-refs")
-    public EmployeeRegisterResponse validateRefs(
+    @GetMapping("/check-refs-exist")
+    public EmployeeMutationResponse checkRefsExist(
             @RequestParam(value = "departmentId", required = false) Long departmentId,
             @RequestParam(value = "certificationId", required = false) Long certificationId
     ) {
-        employeeService.validateRefs(departmentId, certificationId);
-
-        return EmployeeRegisterResponse.ok();
+        employeeService.assertDepartmentAndCertificationExist(departmentId, certificationId);
+        return EmployeeMutationResponse.ok();
     }
 
 
     /**
      * API lấy chi tiết nhân viên (ADM003).
-     * Không tồn tại → BusinessException(ER013) → GlobalExceptionHandler trả 400.
+     * Không tồn tại → AppException(ER013) → GlobalExceptionHandler trả 400.
      *
      * @param employeeId ID nhân viên lấy từ path
      * @return EmployeeDetailResponse chứa thông tin chi tiết nhân viên
@@ -148,14 +155,17 @@ public class EmployeeController {
 
     /**
      * API thêm mới nhân viên (ADM005 -> ADM006).
-     * Validate và lưu DB thực hiện trong Service.
-     * Lỗi validate/nghiệp vụ → BusinessException → GlobalExceptionHandler trả 400.
-     * Lỗi hệ thống → Exception → GlobalExceptionHandler trả 500 ER015.
+     * Validate và lưu DB được thực hiện trong Service.
+     * Lỗi validate/nghiệp vụ -> AppException -> GlobalExceptionHandler trả 400.
+     * Lỗi hệ thống -> Exception -> GlobalExceptionHandler trả 500 ER015.
+     *
+     * @param request EmployeeRequest gửi từ ADM005
+     * @return EmployeeMutationResponse kèm employeeId mới và MSG001
      */
     @PostMapping
-    public EmployeeRegisterResponse addEmployee(@RequestBody EmployeeRequest request) {
+    public EmployeeMutationResponse addEmployee(@RequestBody EmployeeRequest request) {
         Long id = employeeService.addEmployee(request);
-        return EmployeeRegisterResponse.success(id, MessageConstants.MSG001);
+        return EmployeeMutationResponse.success(id, MessageConstants.MSG001);
     }
 
     /**
@@ -163,12 +173,12 @@ public class EmployeeController {
      * Không tồn tại → ER014 (400). Là admin → ER020 (400). Lỗi hệ thống → ER015 (500).
      *
      * @param employeeId ID nhân viên lấy từ path
-     * @return EmployeeRegisterResponse kèm MSG003 khi thành công
+     * @return EmployeeMutationResponse kèm MSG003 khi thành công
      */
     @DeleteMapping("/{employeeId}")
-    public EmployeeRegisterResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
+    public EmployeeMutationResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
         employeeService.deleteEmployee(employeeId);
-        return EmployeeRegisterResponse.success(employeeId, MessageConstants.MSG003);
+        return EmployeeMutationResponse.success(employeeId, MessageConstants.MSG003);
     }
 
 }

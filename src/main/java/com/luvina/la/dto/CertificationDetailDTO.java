@@ -1,9 +1,8 @@
-package com.luvina.la.dto;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [CertificationDetailDTO.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

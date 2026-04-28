@@ -1,9 +1,8 @@
-package com.luvina.la.payload;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [ApiErrorResponse.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.payload;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
@@ -17,11 +16,11 @@ import java.util.List;
  * Response lỗi dùng chung cho toàn bộ các API (ADM002/003/004/005/006).
  *
  * Được trả ra từ {@code GlobalExceptionHandler}:
- *   - code = 400 (BusinessException)  -> lỗi validate / nghiệp vụ (ER001, ER003, ER013, ER014,…).
- *   - code = 500 (Exception)          -> lỗi hệ thống (ER015).
+ *   - code = 400 (AppException) -> lỗi validate / nghiệp vụ (ER001, ER003, ER013, ER014,...).
+ *   - code = 500 (Exception)    -> lỗi hệ thống (ER015).
  *
  * Payload thành công của từng chức năng có shape riêng
- * (EmployeeListResponse, EmployeeDetailResponse, EmployeeRegisterResponse,…),
+ * (EmployeeListResponse, EmployeeDetailResponse, EmployeeMutationResponse,...),
  * còn lỗi thì luôn cùng format này -> FE chỉ cần parse một shape duy nhất.
  *
  * @author [ntlong]
@@ -37,7 +36,13 @@ public class ApiErrorResponse {
     /** Thông tin lỗi (code + params) */
     private MessageResponse message;
 
-    /** Response lỗi validate/nghiệp vụ (code = 400) */
+    /**
+     * Tạo response lỗi validate / nghiệp vụ (code = 400).
+     *
+     * @param errorCode Mã lỗi (vd: "ER004")
+     * @param params    Danh sách tham số đổ vào message (có thể null)
+     * @return ApiErrorResponse với code = 400 và message tương ứng
+     */
     public static ApiErrorResponse badRequest(String errorCode, List<String> params) {
         ApiErrorResponse res = new ApiErrorResponse();
         res.code = HttpStatus.BAD_REQUEST.value();
@@ -45,7 +50,12 @@ public class ApiErrorResponse {
         return res;
     }
 
-    /** Response lỗi hệ thống (code = 500) */
+    /**
+     * Tạo response lỗi hệ thống (code = 500).
+     *
+     * @param errorCode Mã lỗi hệ thống (thường là "ER015")
+     * @return ApiErrorResponse với code = 500 và message tương ứng
+     */
     public static ApiErrorResponse error(String errorCode) {
         ApiErrorResponse res = new ApiErrorResponse();
         res.code = HttpStatus.INTERNAL_SERVER_ERROR.value();

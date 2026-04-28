@@ -1,20 +1,17 @@
-package com.luvina.la.service.impl;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [EmployeeServiceImpl.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.service.impl;
 
-import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
-import com.luvina.la.dto.CertificationDetailDTO;
-import com.luvina.la.dto.EmployeeDetailDTO;
 import com.luvina.la.dto.EmployeeListDTO;
 import com.luvina.la.entity.Certification;
 import com.luvina.la.entity.Department;
 import com.luvina.la.entity.Employee;
 import com.luvina.la.entity.EmployeeCertification;
-import com.luvina.la.exception.BusinessException;
+import com.luvina.la.exception.AppException;
+import com.luvina.la.mapper.EmployeeMapper;
 import com.luvina.la.payload.EmployeeCertificationRequest;
 import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
@@ -26,27 +23,28 @@ import com.luvina.la.repository.EmployeeRepository;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.EmployeeValidation;
 import com.luvina.la.validation.ValidateUtil;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Triển khai EmployeeService - xử lý business logic cho chức năng Employee.
- * - Lấy danh sách nhân viên (search, sort, paging) từ database
  *
- * - Validate đầu vào đã được thực hiện tại Controller trước khi gọi Service
- * - Service chỉ thực hiện: normalize dữ liệu -> truy vấn DB -> trả về kết quả
- * - Sử dụng native SQL query thông qua EmployeeRepository
+ *   - Lấy danh sách nhân viên (search, sort, paging) từ database
+ *   - Lấy chi tiết nhân viên (ADM003)
+ *   - Thêm mới nhân viên kèm danh sách chứng chỉ
+ *   - Xóa nhân viên (chặn xóa admin)
+ *
+ * Validate đầu vào đã được thực hiện ở Controller / EmployeeValidation
+ * trước khi gọi Service. Mapping entity ↔ DTO ↔ Request được tách sang
+ * EmployeeMapper để Service tập trung vào business logic.
  *
  * @author [ntlong]
  */
@@ -62,6 +60,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final CertificationRepository certificationRepository;
     private final ValidateUtil validateUtil;
     private final EmployeeValidation employeeValidation;
+    private final EmployeeMapper employeeMapper;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -71,10 +70,10 @@ public class EmployeeServiceImpl implements EmployeeService {
      *   Đếm tổng số bản ghi thoả điều kiện
      *   Nếu totalRecords = 0 -> trả về danh sách rỗng (code 200)
      *   Lấy danh sách nhân viên từ DB với phân trang
-     *   Chuyển đổi kết quả Object[] -> EmployeeListDTO
+     *   Chuyển đổi kết quả Object[] -> EmployeeListDTO qua EmployeeMapper
      *   Trả về response thành công (code 200)
      *
-     * Thứ tự ưu tiên sort cố định: employeeName -> certificationName -> endDate -> employeeId
+     * Thứ tự ưu tiên sort cố định: employeeName -> certificationName -> endDate -> employeeId.
      *
      * @param employeeName         Tên nhân viên để tìm kiếm (LIKE %name%)
      * @param departmentId         ID phòng ban để lọc (exact match)
@@ -117,31 +116,40 @@ public class EmployeeServiceImpl implements EmployeeService {
                     ordEmpName, ordCertName, ordEnd,
                     offset, limit);
 
-            // Bước 6: Chuyển đổi kết quả native query (Object[]) sang DTO
-            List<EmployeeListDTO> employees = validateUtil.mapResultsToDtos(results);
+            // Bước 6: Chuyển đổi kết quả native query (Object[]) sang DTO qua mapper
+            List<EmployeeListDTO> employees = employeeMapper.toListDTOs(results);
 
             return EmployeeListResponse.success(totalRecords, employees);
 
         } catch (Exception e) {
-
             log.error("Error getting employees", e);
             return EmployeeListResponse.error(MessageConstants.ER015);
         }
     }
+
     /**
-     * Kiểm tra tồn tại department và certification trong DB.
-     * Delegate sang EmployeeValidation. Không tồn tại → throw BusinessException(ER004).
+     * Khẳng định department và certification tồn tại trong DB.
+     * Không tồn tại phòng ban sẽ throw AppException(ER004).
+     *
+     * @param departmentId    ID phòng ban (có thể null nếu chỉ check certification)
+     * @param certificationId ID chứng chỉ (có thể null nếu chỉ check department)
      */
     @Override
-    public void validateRefs(Long departmentId, Long certificationId) {
-        employeeValidation.validateRefs(departmentId, certificationId);
+    public void assertDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
+        employeeValidation.assertDepartmentAndCertificationExist(departmentId, certificationId);
     }
 
     /**
      * Thêm mới 1 nhân viên cùng danh sách chứng chỉ (transactional).
      *
-     * Luồng: validate → hash password → build Employee entity → save Employee →
-     * insert từng chứng chỉ. Lỗi → throw BusinessException, @Transactional rollback.
+     * Luồng:
+     *   - Validate request qua EmployeeValidation
+     *   - Lấy reference Department (đã validate tồn tại)
+     *   - Map request -> Employee entity qua EmployeeMapper
+     *   - Hash password và save Employee
+     *   - Insert từng chứng chỉ kèm theo
+     *
+     * Lỗi business -> throw AppException, @Transactional rollback toàn bộ.
      *
      * @param request Dữ liệu gửi lên từ ADM005
      * @return employee_id vừa tạo
@@ -151,17 +159,24 @@ public class EmployeeServiceImpl implements EmployeeService {
     public Long addEmployee(EmployeeRequest request) {
         employeeValidation.validate(request, false);
 
+        Department dept = departmentRepository.getReferenceById(request.getDepartmentId());
+
         Employee employee = new Employee();
-        applyRequestToEmployee(employee, request);
-
+        employeeMapper.applyRequestToEntity(employee, request, dept);
         employee.setEmployeeLoginPassword(passwordEncoder.encode(request.getEmployeeLoginPassword()));
-        Employee saveEmployee = employeeRepository.save(employee);
 
+        Employee saveEmployee = employeeRepository.save(employee);
         saveCertifications(saveEmployee, request.getCertifications());
 
         return saveEmployee.getEmployeeId();
     }
 
+    /**
+     * Kiểm tra tồn tại nhân viên theo loginId.
+     *
+     * @param employeeLoginId loginId cần kiểm tra
+     * @return true nếu đã tồn tại
+     */
     @Override
     public boolean existsByEmployeeLoginId(String employeeLoginId) {
         return employeeRepository.existsByEmployeeLoginId(employeeLoginId);
@@ -169,18 +184,21 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     /**
      * Xóa nhân viên theo ID.
-     * - Không tồn tại → ER014.
-     * - Là admin (loginId = "admin") → ER020.
-     * - Xóa certifications trước (FK constraint), sau đó xóa employee.
+     *
+     *   - Không tồn tại -> ER014.
+     *   - Là admin (loginId = "admin") -> ER020.
+     *   - Xóa certifications trước (ràng buộc FK), sau đó xóa employee.
+     *
+     * @param employeeId ID nhân viên cần xóa
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteEmployee(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new BusinessException(MessageConstants.ER014));
+                .orElseThrow(() -> new AppException(MessageConstants.ER014));
 
         if ("admin".equals(employee.getEmployeeLoginId())) {
-            throw new BusinessException(MessageConstants.ER020);
+            throw new AppException(MessageConstants.ER020);
         }
 
         employeeCertificationRepository.deleteByEmployeeId(employeeId);
@@ -191,96 +209,31 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Lấy chi tiết nhân viên cho ADM003.
      *
      * Luồng:
-     *   - Tìm employee theo id -> không có → throw BusinessException(ER013).
-     *   - Map entity -> EmployeeDetailDTO (không trả password).
-     *   - Certifications: sort theo certification_level DESC (cấp cao đứng trước).
+     *   - Tìm employee theo id, không có -> throw AppException(ER013).
+     *   - Map entity -> EmployeeDetailDTO qua EmployeeMapper (không trả password).
+     *   - Certifications được sort theo certification_level DESC ngay trong mapper.
      *
      * readOnly = true: chỉ đọc DB, cho phép Hibernate tối ưu + truy cập lazy collection.
-     * Lỗi hệ thống (SQL, cast,…) sẽ rơi về GlobalExceptionHandler (500 ER015).
+     * Lỗi hệ thống (SQL, cast,...) sẽ rơi về GlobalExceptionHandler (500 ER015).
+     *
+     * @param employeeId ID nhân viên cần lấy chi tiết
+     * @return EmployeeDetailResponse chứa thông tin đầy đủ của nhân viên
      */
     @Override
     @Transactional(readOnly = true)
     public EmployeeDetailResponse getEmployeeDetail(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new BusinessException(MessageConstants.ER013));
+                .orElseThrow(() -> new AppException(MessageConstants.ER013));
 
-        EmployeeDetailDTO dto = toDetailDTO(employee);
-        return EmployeeDetailResponse.success(dto);
-    }
-
-    /**
-     * Map Employee entity -> EmployeeDetailDTO.
-     * Sort certifications theo certification_level DESC.
-     */
-    private EmployeeDetailDTO toDetailDTO(Employee employee) {
-        EmployeeDetailDTO dto = new EmployeeDetailDTO();
-        dto.setEmployeeId(employee.getEmployeeId());
-        dto.setEmployeeLoginId(employee.getEmployeeLoginId());
-        dto.setEmployeeName(employee.getEmployeeName());
-        dto.setEmployeeNameKana(employee.getEmployeeNameKana());
-        dto.setEmployeeBirthDate(formatDate(employee.getEmployeeBirthDate()));
-        dto.setEmployeeEmail(employee.getEmployeeEmail());
-        dto.setEmployeeTelephone(employee.getEmployeeTelephone());
-
-        Department dept = employee.getDepartment();
-        if (dept != null) {
-            dto.setDepartmentId(dept.getDepartmentId());
-            dto.setDepartmentName(dept.getDepartmentName());
-        }
-
-        List<EmployeeCertification> certs = employee.getCertifications();
-        List<CertificationDetailDTO> certDtos = (certs == null ? Collections.<EmployeeCertification>emptyList() : certs)
-                .stream()
-                .filter(ec -> ec.getCertification() != null)
-                .sorted(Comparator.comparing(
-                        (EmployeeCertification ec) -> ec.getCertification().getCertificationLevel(),
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(this::toCertDTO)
-                .collect(Collectors.toList());
-        dto.setCertifications(certDtos);
-
-        return dto;
-    }
-
-    /** Map 1 EmployeeCertification -> CertificationDetailDTO */
-    private CertificationDetailDTO toCertDTO(EmployeeCertification ec) {
-        Certification c = ec.getCertification();
-        return new CertificationDetailDTO(
-                c.getCertificationId(),
-                c.getCertificationLevel(),
-                c.getCertificationName(),
-                formatDate(ec.getStartDate()),
-                formatDate(ec.getEndDate()),
-                ec.getScore()
-        );
-    }
-
-    /** Format LocalDate -> yyyy/MM/dd, null-safe */
-    private String formatDate(LocalDate date) {
-        return date == null ? null : date.format(Constants.DATE_FORMAT);
-    }
-
-
-    /**
-     * lấy dữ liệu từ EmployeeRequest
-     * Password được xử lý riêng ở addEmployee.
-     */
-    private void applyRequestToEmployee(Employee employee, EmployeeRequest req) {
-        employee.setEmployeeLoginId(req.getEmployeeLoginId());
-        employee.setEmployeeName(req.getEmployeeName());
-        employee.setEmployeeNameKana(req.getEmployeeNameKana());
-        employee.setEmployeeBirthDate(employeeValidation.parseDate(req.getEmployeeBirthDate()));
-        employee.setEmployeeEmail(req.getEmployeeEmail());
-        employee.setEmployeeTelephone(req.getEmployeeTelephone());
-
-        // Department (đã validate tồn tại)
-        Department dept = departmentRepository.getReferenceById(req.getDepartmentId());
-        employee.setDepartment(dept);
+        return EmployeeDetailResponse.success(employeeMapper.toDetailDTO(employee));
     }
 
     /**
      * Insert toàn bộ danh sách chứng chỉ mới cho nhân viên.
-     * Gọi sau khi save employee mới (với add).
+     * Gọi sau khi đã save employee mới (trong luồng add).
+     *
+     * @param employee Employee đã được save (đã có employeeId)
+     * @param certs    Danh sách chứng chỉ từ request (có thể null/empty)
      */
     private void saveCertifications(Employee employee, List<EmployeeCertificationRequest> certs) {
         if (certs == null || certs.isEmpty()) return;
@@ -289,8 +242,8 @@ public class EmployeeServiceImpl implements EmployeeService {
             ec.setEmployee(employee);
             Certification cert = certificationRepository.getReferenceById(c.getCertificationId());
             ec.setCertification(cert);
-            ec.setStartDate(employeeValidation.parseDate(c.getStartDate()));
-            ec.setEndDate(employeeValidation.parseDate(c.getEndDate()));
+            ec.setStartDate(employeeMapper.parseDate(c.getStartDate()));
+            ec.setEndDate(employeeMapper.parseDate(c.getEndDate()));
             String scoreStr = c.getScore();
             if (scoreStr != null && !scoreStr.isBlank()) {
                 ec.setScore(new BigDecimal(scoreStr));
@@ -298,6 +251,4 @@ public class EmployeeServiceImpl implements EmployeeService {
             employeeCertificationRepository.save(ec);
         }
     }
-
-
 }
