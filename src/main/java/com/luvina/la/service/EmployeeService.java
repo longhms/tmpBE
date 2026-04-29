@@ -73,7 +73,7 @@ public interface EmployeeService {
      * @param departmentId    ID phòng ban (null -> bỏ qua)
      * @param certificationId ID chứng chỉ (null -> bỏ qua)
      */
-    void assertDepartmentAndCertificationExist(Long departmentId, Long certificationId);
+    void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId);
 
     /**
      * Xóa 1 nhân viên (ADM003 -> ADM006).
@@ -82,4 +82,10 @@ public interface EmployeeService {
      * @param employeeId ID nhân viên cần xóa
      */
     void deleteEmployee(Long employeeId);
+
+    /**
+     * Cập nhật 1 nhân viên (adm005 edit -> adm006)
+     * Không tồn tại -> throw AppException.
+     * */
+    void updateEmployee(Long employeeId, EmployeeRequest request);
 }

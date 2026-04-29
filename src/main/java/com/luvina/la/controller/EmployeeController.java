@@ -9,19 +9,12 @@ import com.luvina.la.config.MessageConstants;
 import com.luvina.la.exception.AppException;
 import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
-import com.luvina.la.payload.EmployeeMutationResponse;
+import com.luvina.la.payload.EmployeeResponse;
 import com.luvina.la.payload.EmployeeRequest;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -115,11 +108,11 @@ public class EmployeeController {
      * @return EmployeeMutationResponse.ok() nếu chưa trùng
      */
     @GetMapping("/check-employee-login-id")
-    public EmployeeMutationResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
+    public EmployeeResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
         if (employeeService.existsByEmployeeLoginId(employeeLoginId)){
             throw new AppException(MessageConstants.ER003, Constants.FIELD_LOGIN_ID);
         }
-        return EmployeeMutationResponse.ok();
+        return EmployeeResponse.ok();
     }
 
     /**
@@ -132,12 +125,12 @@ public class EmployeeController {
      * @return EmployeeMutationResponse.ok() nếu tồn tại
      */
     @GetMapping("/check-refs-exist")
-    public EmployeeMutationResponse checkRefsExist(
+    public EmployeeResponse checkRefsExist(
             @RequestParam(value = "departmentId", required = false) Long departmentId,
             @RequestParam(value = "certificationId", required = false) Long certificationId
     ) {
-        employeeService.assertDepartmentAndCertificationExist(departmentId, certificationId);
-        return EmployeeMutationResponse.ok();
+        employeeService.checkDepartmentAndCertificationExist(departmentId, certificationId);
+        return EmployeeResponse.ok();
     }
 
 
@@ -163,9 +156,9 @@ public class EmployeeController {
      * @return EmployeeMutationResponse kèm employeeId mới và MSG001
      */
     @PostMapping
-    public EmployeeMutationResponse addEmployee(@RequestBody EmployeeRequest request) {
+    public EmployeeResponse addEmployee(@RequestBody EmployeeRequest request) {
         Long id = employeeService.addEmployee(request);
-        return EmployeeMutationResponse.success(id, MessageConstants.MSG001);
+        return EmployeeResponse.success(id, MessageConstants.MSG001);
     }
 
     /**
@@ -176,9 +169,26 @@ public class EmployeeController {
      * @return EmployeeMutationResponse kèm MSG003 khi thành công
      */
     @DeleteMapping("/{employeeId}")
-    public EmployeeMutationResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
+    public EmployeeResponse deleteEmployee(@PathVariable("employeeId") Long employeeId) {
         employeeService.deleteEmployee(employeeId);
-        return EmployeeMutationResponse.success(employeeId, MessageConstants.MSG003);
+        return EmployeeResponse.success(employeeId, MessageConstants.MSG003);
+    }
+
+    /**
+     * API cập nhật nhân viên
+     * Lỗi hệ thống -> 500 ER015
+     *
+     * @param employeeId id nhân viên
+     * @param request dữ liệu mới cập nhật
+     * @return EmployeeResponse cùng employeeId và MSG002
+     * */
+    @PutMapping("/{employeeId}")
+    public EmployeeResponse updateEmployee(
+            @PathVariable("employeeId") Long employeeId,
+            @RequestBody EmployeeRequest request
+    ) {
+        employeeService.updateEmployee(employeeId, request);
+        return EmployeeResponse.success(employeeId, MessageConstants.MSG002);
     }
 
 }

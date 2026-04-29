@@ -1,9 +1,8 @@
-package com.luvina.la.payload;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
  * [EmployeeCertificationRequest.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.payload;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

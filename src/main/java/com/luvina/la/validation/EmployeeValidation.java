@@ -1,9 +1,8 @@
-package com.luvina.la.validation;
-/**
+/*
  * Copyright(C) [2026] [Luvina Software Company]
- *
- * [EmployeeValidator.java], [Apr ,2026] [ntlong]
+ * [EmployeeValidation.java], [Apr ,2026] [ntlong]
  */
+package com.luvina.la.validation;
 
 import com.luvina.la.config.MessageConstants;
 import com.luvina.la.exception.AppException;
@@ -22,11 +21,12 @@ import static com.luvina.la.config.Constants.*;
 /**
  * Validator cho chức năng thêm mới / cập nhật nhân viên (ADM004).
  *
- * Mỗi method validate* là void: hợp lệ → không làm gì, sai → throw AppException.
+ * Mỗi method validate* là void: hợp lệ -> không làm gì, sai -> throw AppException.
  * GlobalExceptionHandler sẽ bắt và trả response 400 cho client.
  *
  * Thứ tự validate tổng thể: từ trên xuống dưới theo layout màn hình ADM004
- * (loginId -> password -> department -> name -> kana -> birthDate -> email -> phone -> certifications).
+ * (loginId -> password -> department -> name -> kana -> birthDate -> email
+ *  -> phone -> certifications).
  *
  * @author [ntlong]
  */
@@ -39,19 +39,19 @@ public class EmployeeValidation {
     private final CertificationRepository certificationRepository;
 
     /**
-     * Validate toàn bộ EmployeeRequest.
-     * Gặp lỗi đầu tiên → throw AppException (stop-on-first-error).
+     * Validate toàn bộ EmployeeRequest theo thứ tự field trên màn hình ADM004.
+     * Gặp lỗi đầu tiên sẽ throw AppException (stop-on-first-error).
      *
-     * @param request    Dữ liệu gửi lên
-     * @param isUpdate   true nếu là update (bỏ qua password nếu null/empty, skip check duplicate login_id)
+     * @param request  Dữ liệu gửi lên từ client
+     * @param isUpdate true nếu là update (bỏ qua check duplicate loginId; password
+     *                 null/empty -> skip)
      */
     public void validate(EmployeeRequest request, boolean isUpdate) {
-
         validateLoginId(request.getEmployeeLoginId(), isUpdate);
 
         boolean skipPassword = isUpdate && isEmpty(request.getEmployeeLoginPassword());
-
         if (!skipPassword) validatePassword(request.getEmployeeLoginPassword());
+
         validateDepartment(request.getDepartmentId());
         validateRequiredMaxLen(request.getEmployeeName(), MAX_LEN_NAME, FIELD_NAME);
         validateNameKana(request.getEmployeeNameKana());
@@ -67,11 +67,11 @@ public class EmployeeValidation {
     }
 
     /**
-     * bat buoc nhap + kiem tra maxlength.
+     * Bắt buộc nhập + kiểm tra maxlength cho 1 field text dạng String.
      *
-     * @param value     Gia tri can kiem tra
-     * @param maxLen    Do dai toi da cho phep
-     * @param fieldName Ten field (de do vao {0} cua message)
+     * @param value     Giá trị cần kiểm tra
+     * @param maxLen    Độ dài tối đa cho phép
+     * @param fieldName Tên field (dùng để đổ vào {0} của message)
      */
     private void validateRequiredMaxLen(String value, int maxLen, String fieldName) {
         if (isEmpty(value))
@@ -81,7 +81,12 @@ public class EmployeeValidation {
         }
     }
 
-    //login_id: bat buoc nhap + kiem tra maxlength + check trung
+    /**
+     * Validate login_id: bắt buộc + maxlength + đúng pattern + check trùng (chỉ khi add).
+     *
+     * @param loginId  Giá trị login_id từ request
+     * @param isUpdate true -> bỏ qua check trùng trong DB
+     */
     private void validateLoginId(String loginId, boolean isUpdate) {
         validateRequiredMaxLen(loginId, MAX_LEN_LOGIN_ID, FIELD_LOGIN_ID);
 
@@ -92,19 +97,28 @@ public class EmployeeValidation {
             throw new AppException(MessageConstants.ER003, FIELD_LOGIN_ID);
     }
 
-    //password: bat buoc nhap + kiem tra maxlength + check định dạng
+    /**
+     * Validate password: bắt buộc nhập + độ dài [MIN, MAX] + chỉ ký tự half-size.
+     *
+     * @param pwd Mật khẩu plain-text từ request
+     */
     private void validatePassword(String pwd) {
         if (isEmpty(pwd))
             throw new AppException(MessageConstants.ER001, FIELD_PASSWORD);
         if (pwd.length() < MIN_LEN_PASSWORD || pwd.length() > MAX_LEN_PASSWORD) {
-            throw new AppException(MessageConstants.ER007, FIELD_PASSWORD, String.valueOf(MIN_LEN_PASSWORD), String.valueOf(MAX_LEN_PASSWORD));
+            throw new AppException(MessageConstants.ER007, FIELD_PASSWORD,
+                    String.valueOf(MIN_LEN_PASSWORD), String.valueOf(MAX_LEN_PASSWORD));
         }
         if (!HALF_SIZE_PATTERN.matcher(pwd).matches()) {
             throw new AppException(MessageConstants.ER008, FIELD_PASSWORD);
         }
     }
 
-    // department_id: bat buoc nhap + kiem tra ton tai
+    /**
+     * Validate department_id: bắt buộc chọn (>0) + tồn tại trong DB.
+     *
+     * @param departmentId ID phòng ban từ request
+     */
     private void validateDepartment(Long departmentId) {
         if (departmentId == null || departmentId <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_DEPARTMENT);
@@ -114,7 +128,11 @@ public class EmployeeValidation {
         }
     }
 
-    // name_kana: bat buoc nhap + kiem tra maxlength + check định dạng
+    /**
+     * Validate name_kana: bắt buộc + maxlength + chỉ chứa ký tự katakana.
+     *
+     * @param kana Tên katakana từ request
+     */
     private void validateNameKana(String kana) {
         validateRequiredMaxLen(kana, MAX_LEN_NAME, FIELD_NAME_KANA);
 
@@ -123,7 +141,11 @@ public class EmployeeValidation {
         }
     }
 
-    // birth_date: bat buoc nhap + kiem tra định dạng
+    /**
+     * Validate birth_date: bắt buộc nhập + đúng định dạng yyyy/MM/dd.
+     *
+     * @param birth Ngày sinh dạng String từ request
+     */
     private void validateBirthDate(String birth) {
         if (isEmpty(birth))
             throw new AppException(MessageConstants.ER001, FIELD_BIRTH_DATE);
@@ -131,7 +153,11 @@ public class EmployeeValidation {
             throw new AppException(MessageConstants.ER011, FIELD_BIRTH_DATE);
     }
 
-    // email: bat buoc nhap + kiem tra maxlength + check định dạng
+    /**
+     * Validate email: bắt buộc + maxlength + đúng pattern email.
+     *
+     * @param email Email từ request
+     */
     private void validateEmail(String email) {
         validateRequiredMaxLen(email, MAX_LEN_EMAIL, FIELD_EMAIL);
         if (!EMAIL_PATTERN.matcher(email).matches()) {
@@ -139,7 +165,11 @@ public class EmployeeValidation {
         }
     }
 
-    // phone: bat buoc nhap + kiem tra maxlength + check định dạng (chỉ digit và dấu '-')
+    /**
+     * Validate telephone: bắt buộc + maxlength + chỉ digit và dấu '-'.
+     *
+     * @param phone Số điện thoại từ request
+     */
     private void validatePhone(String phone) {
         validateRequiredMaxLen(phone, MAX_LEN_PHONE, FIELD_PHONE);
         if (!PHONE_PATTERN.matcher(phone).matches()) {
@@ -147,11 +177,16 @@ public class EmployeeValidation {
         }
     }
 
-    // certification: bat buoc nhap + kiem tra ton tai + check định dạng ngày + score
+    /**
+     * Validate 1 chứng chỉ: certificationId tồn tại + startDate/endDate đúng định dạng
+     * + endDate sau startDate + score đúng định dạng.
+     *
+     * @param cert Dữ liệu 1 chứng chỉ từ request (null -> bỏ qua)
+     */
     private void validateCertification(EmployeeCertificationRequest cert) {
         if (cert == null) return;
 
-        // certification_id: bat buoc chon + kiem tra ton tai
+        // certification_id: bắt buộc chọn + tồn tại trong DB
         if (cert.getCertificationId() == null || cert.getCertificationId() <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_CERTIFICATION);
         }
@@ -159,7 +194,7 @@ public class EmployeeValidation {
             throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
         }
 
-        // start_date: bat buoc nhap + kiem tra định dạng (check empty trước khi parse)
+        // start_date: bắt buộc nhập + đúng định dạng (check empty trước khi parse)
         if (isEmpty(cert.getStartDate())) {
             throw new AppException(MessageConstants.ER001, FIELD_START_DATE);
         }
@@ -168,7 +203,7 @@ public class EmployeeValidation {
             throw new AppException(MessageConstants.ER011, FIELD_START_DATE);
         }
 
-        // end_date: bat buoc nhap + kiem tra định dạng
+        // end_date: bắt buộc nhập + đúng định dạng
         if (isEmpty(cert.getEndDate())) {
             throw new AppException(MessageConstants.ER001, FIELD_END_DATE);
         }
@@ -177,12 +212,12 @@ public class EmployeeValidation {
             throw new AppException(MessageConstants.ER011, FIELD_END_DATE);
         }
 
-        // end_date > start_date (ER012)
+        // end_date phải sau start_date (ER012)
         if (!end.isAfter(start)) {
             throw new AppException(MessageConstants.ER012);
         }
 
-        // score: bat buoc nhap + kiem tra maxlength + check định dạng
+        // score: bắt buộc nhập + maxlength + đúng định dạng số
         validateRequiredMaxLen(cert.getScore(), MAX_LEN_SCORE, FIELD_SCORE);
         if (!SCORE_PATTERN.matcher(cert.getScore()).matches()) {
             throw new AppException(MessageConstants.ER008, FIELD_SCORE);
@@ -194,10 +229,10 @@ public class EmployeeValidation {
      * Dùng cho endpoint /check-refs-exist (FE check trước khi submit).
      * Không tồn tại sẽ throw AppException(ER004).
      *
-     * @param departmentId    ID phòng ban (null -> bỏ qua check phòng ban)
-     * @param certificationId ID chứng chỉ (null -> bỏ qua check chứng chỉ)
+     * @param departmentId    ID phòng ban (null -> bỏ qua)
+     * @param certificationId ID chứng chỉ (null -> bỏ qua)
      */
-    public void assertDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
+    public void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
         if (departmentId != null && !departmentRepository.existsById(departmentId)) {
             throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
         }
@@ -207,7 +242,10 @@ public class EmployeeValidation {
     }
 
     /**
-     * Parse date yyyy/MM/dd theo STRICT resolver (reject 2023/02/30, 2023/13/01…).
+     * Parse date yyyy/MM/dd theo STRICT resolver
+     * (reject ngày không hợp lệ như 2023/02/30, 2023/13/01,...).
+     *
+     * @param value Chuỗi ngày cần parse
      * @return LocalDate nếu hợp lệ, null nếu không
      */
     public LocalDate parseDate(String value) {
@@ -217,8 +255,13 @@ public class EmployeeValidation {
             return null;
         }
     }
-    
-    // ham kiem tra string null hoac empty
+
+    /**
+     * Tiện ích kiểm tra String null hoặc rỗng.
+     *
+     * @param s Chuỗi cần kiểm tra
+     * @return true nếu null hoặc empty
+     */
     private boolean isEmpty(String s) {
         return s == null || s.isEmpty();
     }

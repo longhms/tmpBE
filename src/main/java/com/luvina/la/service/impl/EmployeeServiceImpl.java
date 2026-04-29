@@ -135,8 +135,8 @@ public class EmployeeServiceImpl implements EmployeeService {
      * @param certificationId ID chứng chỉ (có thể null nếu chỉ check department)
      */
     @Override
-    public void assertDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
-        employeeValidation.assertDepartmentAndCertificationExist(departmentId, certificationId);
+    public void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
+        employeeValidation.checkDepartmentAndCertificationExist(departmentId, certificationId);
     }
 
     /**
@@ -186,7 +186,7 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Xóa nhân viên theo ID.
      *
      *   - Không tồn tại -> ER014.
-     *   - Là admin (loginId = "admin") -> ER020.
+     *   - Là admin -> ER020.
      *   - Xóa certifications trước (ràng buộc FK), sau đó xóa employee.
      *
      * @param employeeId ID nhân viên cần xóa
@@ -250,5 +250,47 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
             employeeCertificationRepository.save(ec);
         }
+    }
+
+    /**
+     * Cập nhật nhân viên
+     *  check Employee ID có tồn tại không
+     *  validate thông tin nhân viên vơới mode Update (không cập nhật Password)
+     *  cập nhật các trường thông tin của nhân viên.
+     *  cập nhật chứng chỉ tiếng Nhật cho nhân viên.
+     * @Transactional rollback dữ liệu nếu có lỗi
+     *
+     * */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateEmployee(Long employeeId, EmployeeRequest request) {
+        //check employeeId có tồn tại.
+        Employee employee = employeeRepository.findById(employeeId).orElseThrow(() -> new AppException(MessageConstants.ER013));
+
+        //validate thông tin nhân viên với mode Update (không cập nhật password)
+        employeeValidation.validate(request, true);
+
+        Department department = departmentRepository.getReferenceById(request.getDepartmentId());
+
+        //cập nhật các trường thông tin nhân viên
+        employee.setEmployeeName(request.getEmployeeName());
+        employee.setEmployeeNameKana(request.getEmployeeNameKana());
+        employee.setEmployeeBirthDate(employeeMapper.parseDate(request.getEmployeeBirthDate()));
+        employee.setEmployeeEmail(request.getEmployeeEmail());
+        employee.setEmployeeTelephone(request.getEmployeeTelephone());
+        employee.setDepartment(department);
+
+        //nếu request vẫn trả về password từ api thì cập nhật.
+        String newPassword = request.getEmployeeLoginPassword();
+        if (newPassword != null && !newPassword.isEmpty()) {
+            employee.setEmployeeLoginPassword(passwordEncoder.encode(newPassword));
+        }
+
+        //lưu thông tin nhân viên
+        employeeRepository.save(employee);
+
+        //Cập nhật chứng chỉ tiếng Nhật cho nhân viên.
+        employeeCertificationRepository.deleteByEmployeeId(employeeId);
+        saveCertifications(employee, request.getCertifications());
     }
 }
