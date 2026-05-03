@@ -151,22 +151,22 @@ public class EmployeeServiceImpl implements EmployeeService {
      *
      * Lỗi business -> throw AppException, @Transactional rollback toàn bộ.
      *
-     * @param request Dữ liệu gửi lên từ ADM005
+     * @param employeeRequest Dữ liệu gửi lên từ ADM005
      * @return employee_id vừa tạo
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long addEmployee(EmployeeRequest request) {
-        employeeValidation.validate(request, false);
+    public Long addEmployee(EmployeeRequest employeeRequest) {
+        employeeValidation.validate(employeeRequest, false);
 
-        Department dept = departmentRepository.getReferenceById(request.getDepartmentId());
+        Department department = departmentRepository.getReferenceById(employeeRequest.getDepartmentId());
 
         Employee employee = new Employee();
-        employeeMapper.applyRequestToEntity(employee, request, dept);
-        employee.setEmployeeLoginPassword(passwordEncoder.encode(request.getEmployeeLoginPassword()));
+        employeeMapper.applyRequestToEntity(employee, employeeRequest, department);
+        employee.setEmployeeLoginPassword(passwordEncoder.encode(employeeRequest.getEmployeeLoginPassword()));
 
         Employee saveEmployee = employeeRepository.save(employee);
-        saveCertifications(saveEmployee, request.getCertifications());
+        saveCertifications(saveEmployee, employeeRequest.getCertifications());
 
         return saveEmployee.getEmployeeId();
     }
@@ -233,22 +233,22 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Gọi sau khi đã save employee mới (trong luồng add).
      *
      * @param employee Employee đã được save (đã có employeeId)
-     * @param certs    Danh sách chứng chỉ từ request (có thể null/empty)
+     * @param certificationRequestList    Danh sách chứng chỉ từ request (có thể null/empty)
      */
-    private void saveCertifications(Employee employee, List<EmployeeCertificationRequest> certs) {
-        if (certs == null || certs.isEmpty()) return;
-        for (EmployeeCertificationRequest c : certs) {
-            EmployeeCertification ec = new EmployeeCertification();
-            ec.setEmployee(employee);
-            Certification cert = certificationRepository.getReferenceById(c.getCertificationId());
-            ec.setCertification(cert);
-            ec.setStartDate(employeeMapper.parseDate(c.getStartDate()));
-            ec.setEndDate(employeeMapper.parseDate(c.getEndDate()));
-            String scoreStr = c.getScore();
+    private void saveCertifications(Employee employee, List<EmployeeCertificationRequest> certificationRequestList) {
+        if (certificationRequestList == null || certificationRequestList.isEmpty()) return;
+        for (EmployeeCertificationRequest employeeCertificationRequest : certificationRequestList) {
+            EmployeeCertification employeeCertification = new EmployeeCertification();
+            employeeCertification.setEmployee(employee);
+            Certification certification = certificationRepository.getReferenceById(employeeCertificationRequest.getCertificationId());
+            employeeCertification.setCertification(certification);
+            employeeCertification.setStartDate(employeeMapper.parseDate(employeeCertificationRequest.getStartDate()));
+            employeeCertification.setEndDate(employeeMapper.parseDate(employeeCertificationRequest.getEndDate()));
+            String scoreStr = employeeCertificationRequest.getScore();
             if (scoreStr != null && !scoreStr.isBlank()) {
-                ec.setScore(new BigDecimal(scoreStr));
+                employeeCertification.setScore(new BigDecimal(scoreStr));
             }
-            employeeCertificationRepository.save(ec);
+            employeeCertificationRepository.save(employeeCertification);
         }
     }
 
@@ -263,34 +263,34 @@ public class EmployeeServiceImpl implements EmployeeService {
      * */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateEmployee(Long employeeId, EmployeeRequest request) {
+    public void updateEmployee(Long employeeId, EmployeeRequest employeeRequest) {
         //check employeeId có tồn tại.
         Employee employee = employeeRepository.findById(employeeId).orElseThrow(() -> new AppException(MessageConstants.ER013));
 
         //validate thông tin nhân viên với mode Update (không cập nhật password)
-        employeeValidation.validate(request, true);
+        employeeValidation.validate(employeeRequest, true);
 
-        Department department = departmentRepository.getReferenceById(request.getDepartmentId());
+        Department department = departmentRepository.getReferenceById(employeeRequest.getDepartmentId());
 
         //cập nhật các trường thông tin nhân viên
-        employee.setEmployeeName(request.getEmployeeName());
-        employee.setEmployeeNameKana(request.getEmployeeNameKana());
-        employee.setEmployeeBirthDate(employeeMapper.parseDate(request.getEmployeeBirthDate()));
-        employee.setEmployeeEmail(request.getEmployeeEmail());
-        employee.setEmployeeTelephone(request.getEmployeeTelephone());
+        employee.setEmployeeName(employeeRequest.getEmployeeName());
+        employee.setEmployeeNameKana(employeeRequest.getEmployeeNameKana());
+        employee.setEmployeeBirthDate(employeeMapper.parseDate(employeeRequest.getEmployeeBirthDate()));
+        employee.setEmployeeEmail(employeeRequest.getEmployeeEmail());
+        employee.setEmployeeTelephone(employeeRequest.getEmployeeTelephone());
         employee.setDepartment(department);
 
         //nếu request vẫn trả về password từ api thì cập nhật.
-        String newPassword = request.getEmployeeLoginPassword();
-        if (newPassword != null && !newPassword.isEmpty()) {
-            employee.setEmployeeLoginPassword(passwordEncoder.encode(newPassword));
-        }
+//        String newPassword = employeeRequest.getEmployeeLoginPassword();
+//        if (newPassword != null && !newPassword.isEmpty()) {
+//            employee.setEmployeeLoginPassword(passwordEncoder.encode(newPassword));
+//        }
 
         //lưu thông tin nhân viên
         employeeRepository.save(employee);
 
         //Cập nhật chứng chỉ tiếng Nhật cho nhân viên.
         employeeCertificationRepository.deleteByEmployeeId(employeeId);
-        saveCertifications(employee, request.getCertifications());
+        saveCertifications(employee, employeeRequest.getCertifications());
     }
 }

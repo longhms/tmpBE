@@ -152,12 +152,12 @@ public class EmployeeController {
      * Lỗi validate/nghiệp vụ -> AppException -> GlobalExceptionHandler trả 400.
      * Lỗi hệ thống -> Exception -> GlobalExceptionHandler trả 500 ER015.
      *
-     * @param request EmployeeRequest gửi từ ADM005
+     * @param employeeRequest EmployeeRequest gửi từ ADM005
      * @return EmployeeMutationResponse kèm employeeId mới và MSG001
      */
     @PostMapping
-    public EmployeeResponse addEmployee(@RequestBody EmployeeRequest request) {
-        Long id = employeeService.addEmployee(request);
+    public EmployeeResponse addEmployee(@RequestBody EmployeeRequest employeeRequest) {
+        Long id = employeeService.addEmployee(employeeRequest);
         return EmployeeResponse.success(id, MessageConstants.MSG001);
     }
 
@@ -179,15 +179,15 @@ public class EmployeeController {
      * Lỗi hệ thống -> 500 ER015
      *
      * @param employeeId id nhân viên
-     * @param request dữ liệu mới cập nhật
+     * @param employeeRequest dữ liệu mới cập nhật
      * @return EmployeeResponse cùng employeeId và MSG002
      * */
     @PutMapping("/{employeeId}")
     public EmployeeResponse updateEmployee(
             @PathVariable("employeeId") Long employeeId,
-            @RequestBody EmployeeRequest request
+            @RequestBody EmployeeRequest employeeRequest
     ) {
-        employeeService.updateEmployee(employeeId, request);
+        employeeService.updateEmployee(employeeId, employeeRequest);
         return EmployeeResponse.success(employeeId, MessageConstants.MSG002);
     }
 

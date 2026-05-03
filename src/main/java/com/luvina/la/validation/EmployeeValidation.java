@@ -42,25 +42,25 @@ public class EmployeeValidation {
      * Validate toàn bộ EmployeeRequest theo thứ tự field trên màn hình ADM004.
      * Gặp lỗi đầu tiên sẽ throw AppException (stop-on-first-error).
      *
-     * @param request  Dữ liệu gửi lên từ client
+     * @param employeeRequest  Dữ liệu gửi lên từ client
      * @param isUpdate true nếu là update (bỏ qua check duplicate loginId; password
      *                 null/empty -> skip)
      */
-    public void validate(EmployeeRequest request, boolean isUpdate) {
-        validateLoginId(request.getEmployeeLoginId(), isUpdate);
+    public void validate(EmployeeRequest employeeRequest, boolean isUpdate) {
+        validateLoginId(employeeRequest.getEmployeeLoginId(), isUpdate);
 
-        boolean skipPassword = isUpdate && isEmpty(request.getEmployeeLoginPassword());
-        if (!skipPassword) validatePassword(request.getEmployeeLoginPassword());
+        boolean skipPassword = isUpdate && isEmpty(employeeRequest.getEmployeeLoginPassword());
+        if (!skipPassword) validatePassword(employeeRequest.getEmployeeLoginPassword());
 
-        validateDepartment(request.getDepartmentId());
-        validateRequiredMaxLen(request.getEmployeeName(), MAX_LEN_NAME, FIELD_NAME);
-        validateNameKana(request.getEmployeeNameKana());
-        validateBirthDate(request.getEmployeeBirthDate());
-        validateEmail(request.getEmployeeEmail());
-        validatePhone(request.getEmployeeTelephone());
+        validateDepartment(employeeRequest.getDepartmentId());
+        validateRequiredMaxLen(employeeRequest.getEmployeeName(), MAX_LEN_NAME, FIELD_NAME);
+        validateNameKana(employeeRequest.getEmployeeNameKana());
+        validateBirthDate(employeeRequest.getEmployeeBirthDate());
+        validateEmail(employeeRequest.getEmployeeEmail());
+        validatePhone(employeeRequest.getEmployeeTelephone());
 
-        if (request.getCertifications() != null) {
-            for (EmployeeCertificationRequest c : request.getCertifications()) {
+        if (employeeRequest.getCertifications() != null) {
+            for (EmployeeCertificationRequest c : employeeRequest.getCertifications()) {
                 validateCertification(c);
             }
         }

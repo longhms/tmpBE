@@ -49,10 +49,10 @@ public class EmployeeResponse {
      * @return EmployeeMutationResponse code = 200 kèm employeeId + message
      */
     public static EmployeeResponse success(Long employeeId, String messageCode) {
-        EmployeeResponse res = ok();
-        res.employeeId = employeeId;
-        res.message = new MessageResponse(messageCode, Collections.emptyList());
-        return res;
+        EmployeeResponse employeeResponse = ok();
+        employeeResponse.employeeId = employeeId;
+        employeeResponse.message = new MessageResponse(messageCode, Collections.emptyList());
+        return employeeResponse;
     }
 
     /**
@@ -61,9 +61,9 @@ public class EmployeeResponse {
      * @return EmployeeMutationResponse với code = 200
      */
     public static EmployeeResponse ok() {
-        EmployeeResponse res = new EmployeeResponse();
-        res.code = HttpStatus.OK.value();
-        return res;
+        EmployeeResponse employeeResponse = new EmployeeResponse();
+        employeeResponse.code = HttpStatus.OK.value();
+        return employeeResponse;
     }
 
     /**
@@ -74,10 +74,10 @@ public class EmployeeResponse {
      * @return EmployeeMutationResponse code = 400 kèm message
      */
     public static EmployeeResponse badRequest(String errorCode, List<String> params) {
-        EmployeeResponse res = new EmployeeResponse();
-        res.code = HttpStatus.BAD_REQUEST.value();
-        res.message = new MessageResponse(errorCode, params);
-        return res;
+        EmployeeResponse employeeResponse = new EmployeeResponse();
+        employeeResponse.code = HttpStatus.BAD_REQUEST.value();
+        employeeResponse.message = new MessageResponse(errorCode, params);
+        return employeeResponse;
     }
 
     /**
@@ -87,9 +87,9 @@ public class EmployeeResponse {
      * @return EmployeeMutationResponse code = 500 kèm message
      */
     public static EmployeeResponse error(String errorCode) {
-        EmployeeResponse res = new EmployeeResponse();
-        res.code = HttpStatus.INTERNAL_SERVER_ERROR.value();
-        res.message = new MessageResponse(errorCode, Collections.emptyList());
-        return res;
+        EmployeeResponse employeeResponse = new EmployeeResponse();
+        employeeResponse.code = HttpStatus.INTERNAL_SERVER_ERROR.value();
+        employeeResponse.message = new MessageResponse(errorCode, Collections.emptyList());
+        return employeeResponse;
     }
 }
