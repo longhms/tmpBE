@@ -115,6 +115,29 @@ public class EmployeeValidation {
     }
 
     /**
+     * Kiểm tra sự tồn tại của các tham chiếu: loginId trùng (chỉ khi mode=add),
+     * department tồn tại, certification tồn tại.
+     * Dùng chung cho endpoint check-refs-exist và validate form submit.
+     * Param nào null thì bỏ qua.
+     *
+     * @param employeeLoginId login ID cần check trùng (optional)
+     * @param departmentId    ID phòng ban (optional)
+     * @param certificationId ID chứng chỉ (optional)
+     * @param mode            "add" để check trùng loginId, null/khác để bỏ qua
+     */
+    public void checkRefsExist(String employeeLoginId, Long departmentId, Long certificationId, String mode) {
+        if (employeeLoginId != null && employeeRepository.existsByEmployeeLoginId(employeeLoginId) && MODE_ADD.equals(mode)) {
+            throw new AppException(MessageConstants.ER003, FIELD_LOGIN_ID);
+        }
+        if (departmentId != null && !departmentService.departmentExists(departmentId)) {
+            throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
+        }
+        if (certificationId != null && !certificationService.certificationExists(certificationId)) {
+            throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
+        }
+    }
+
+    /**
      * Validate department_id: bắt buộc chọn (>0) + tồn tại trong DB.
      *
      * @param departmentId ID phòng ban từ request
@@ -123,9 +146,7 @@ public class EmployeeValidation {
         if (departmentId == null || departmentId <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_DEPARTMENT);
         }
-        if (!departmentService.departmentExists(departmentId)) {
-            throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
-        }
+        checkRefsExist(null, departmentId, null, null);
     }
 
     /**
@@ -190,9 +211,7 @@ public class EmployeeValidation {
         if (cert.getCertificationId() == null || cert.getCertificationId() <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_CERTIFICATION);
         }
-        if (!certificationService.certificationExists(cert.getCertificationId())) {
-            throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
-        }
+        checkRefsExist(null, null, cert.getCertificationId(), null);
 
         // start_date: bắt buộc nhập + đúng định dạng (check empty trước khi parse)
         if (isEmpty(cert.getStartDate())) {

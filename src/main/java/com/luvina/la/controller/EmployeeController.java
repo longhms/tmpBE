@@ -6,14 +6,12 @@ package com.luvina.la.controller;
 
 import com.luvina.la.config.Constants;
 import com.luvina.la.config.MessageConstants;
-import com.luvina.la.exception.AppException;
 import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
 import com.luvina.la.payload.EmployeeResponse;
 import com.luvina.la.payload.EmployeeRequest;
-import com.luvina.la.service.CertificationService;
-import com.luvina.la.service.DepartmentService;
 import com.luvina.la.service.EmployeeService;
+import com.luvina.la.validation.EmployeeValidation;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -44,8 +42,7 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final ValidateUtil validateUtil;
-    private final DepartmentService departmentService;
-    private final CertificationService certificationService;
+    private final EmployeeValidation employeeValidation;
 
     /**
      * API lấy danh sách nhân viên với tìm kiếm, sắp xếp, phân trang.
@@ -125,15 +122,7 @@ public class EmployeeController {
             @RequestParam(value = "mode", required = false) String mode
     ) {
 
-        if (employeeLoginId != null && employeeService.employeeLoginIdExists(employeeLoginId) && MODE_ADD.equals(mode)) {
-            throw new AppException(MessageConstants.ER003, FIELD_LOGIN_ID);
-        }
-        if (departmentId != null && !departmentService.departmentExists(departmentId)) {
-            throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
-        }
-        if (certificationId != null && !certificationService.certificationExists(certificationId)) {
-            throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
-        }
+        employeeValidation.checkRefsExist(employeeLoginId, departmentId, certificationId, mode);
         return EmployeeResponse.ok();
     }
 
