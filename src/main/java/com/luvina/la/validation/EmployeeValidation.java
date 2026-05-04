@@ -8,9 +8,9 @@ import com.luvina.la.config.MessageConstants;
 import com.luvina.la.exception.AppException;
 import com.luvina.la.payload.EmployeeCertificationRequest;
 import com.luvina.la.payload.EmployeeRequest;
-import com.luvina.la.repository.CertificationRepository;
-import com.luvina.la.repository.DepartmentRepository;
 import com.luvina.la.repository.EmployeeRepository;
+import com.luvina.la.service.CertificationService;
+import com.luvina.la.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -35,8 +35,8 @@ import static com.luvina.la.config.Constants.*;
 public class EmployeeValidation {
 
     private final EmployeeRepository employeeRepository;
-    private final DepartmentRepository departmentRepository;
-    private final CertificationRepository certificationRepository;
+    private final DepartmentService departmentService;
+    private final CertificationService certificationService;
 
     /**
      * Validate toàn bộ EmployeeRequest theo thứ tự field trên màn hình ADM004.
@@ -123,7 +123,7 @@ public class EmployeeValidation {
         if (departmentId == null || departmentId <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_DEPARTMENT);
         }
-        if (!departmentRepository.existsById(departmentId)) {
+        if (!departmentService.departmentExists(departmentId)) {
             throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
         }
     }
@@ -190,7 +190,7 @@ public class EmployeeValidation {
         if (cert.getCertificationId() == null || cert.getCertificationId() <= 0) {
             throw new AppException(MessageConstants.ER002, FIELD_CERTIFICATION);
         }
-        if (!certificationRepository.existsById(cert.getCertificationId())) {
+        if (!certificationService.certificationExists(cert.getCertificationId())) {
             throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
         }
 
@@ -221,23 +221,6 @@ public class EmployeeValidation {
         validateRequiredMaxLen(cert.getScore(), MAX_LEN_SCORE, FIELD_SCORE);
         if (!SCORE_PATTERN.matcher(cert.getScore()).matches()) {
             throw new AppException(MessageConstants.ER008, FIELD_SCORE);
-        }
-    }
-
-    /**
-     * Khẳng định department và certification tồn tại trong DB.
-     * Dùng cho endpoint /check-refs-exist (FE check trước khi submit).
-     * Không tồn tại sẽ throw AppException(ER004).
-     *
-     * @param departmentId    ID phòng ban (null -> bỏ qua)
-     * @param certificationId ID chứng chỉ (null -> bỏ qua)
-     */
-    public void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
-        if (departmentId != null && !departmentRepository.existsById(departmentId)) {
-            throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
-        }
-        if (certificationId != null && !certificationRepository.existsById(certificationId)) {
-            throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
         }
     }
 

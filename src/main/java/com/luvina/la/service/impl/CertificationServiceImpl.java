@@ -26,6 +26,10 @@ import java.util.stream.Collectors;
 public class CertificationServiceImpl implements CertificationService {
  private final CertificationRepository certificationRepository;
 
+ /**
+  * Trả về toàn bộ các chứng chỉ
+  *
+  */
  @Override
  public List<CertificationDTO> getAllCertifications() {
   List<Certification> certifications = certificationRepository.findAll(
@@ -34,5 +38,13 @@ public class CertificationServiceImpl implements CertificationService {
   return certifications.stream()
           .map(d -> new CertificationDTO(d.getCertificationId(), d.getCertificationName(), d.getCertificationLevel()))
           .collect(Collectors.toList());
+ }
+
+ /**
+  * kiêểm tra chứng chỉ có tồn tại hay không?
+  */
+ @Override
+ public boolean certificationExists(Long id) {
+  return id != null && certificationRepository.existsById(id);
  }
 }

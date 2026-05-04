@@ -45,6 +45,9 @@ public class Constants {
     public static final String FIELD_END_DATE = "失効日";
     public static final String FIELD_SCORE = "点数";
 
+    public static final String MODE_ADD = "add";
+    public static final String MODE_EDIT = "edit";
+
     // ── Các pattern regex ──
     /** login_id: bắt đầu = chữ/underscore, các ký tự còn lại = [a-zA-Z0-9_] */
     public static final Pattern LOGIN_ID_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");

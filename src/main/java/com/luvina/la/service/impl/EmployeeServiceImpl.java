@@ -128,18 +128,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
-     * Khẳng định department và certification tồn tại trong DB.
-     * Không tồn tại phòng ban sẽ throw AppException(ER004).
-     *
-     * @param departmentId    ID phòng ban (có thể null nếu chỉ check certification)
-     * @param certificationId ID chứng chỉ (có thể null nếu chỉ check department)
-     */
-    @Override
-    public void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId) {
-        employeeValidation.checkDepartmentAndCertificationExist(departmentId, certificationId);
-    }
-
-    /**
      * Thêm mới 1 nhân viên cùng danh sách chứng chỉ (transactional).
      *
      * Luồng:
@@ -169,17 +157,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         saveCertifications(saveEmployee, employeeRequest.getCertifications());
 
         return saveEmployee.getEmployeeId();
-    }
-
-    /**
-     * Kiểm tra tồn tại nhân viên theo loginId.
-     *
-     * @param employeeLoginId loginId cần kiểm tra
-     * @return true nếu đã tồn tại
-     */
-    @Override
-    public boolean existsByEmployeeLoginId(String employeeLoginId) {
-        return employeeRepository.existsByEmployeeLoginId(employeeLoginId);
     }
 
     /**
@@ -258,8 +235,9 @@ public class EmployeeServiceImpl implements EmployeeService {
      *  validate thông tin nhân viên vơới mode Update (không cập nhật Password)
      *  cập nhật các trường thông tin của nhân viên.
      *  cập nhật chứng chỉ tiếng Nhật cho nhân viên.
-     * @Transactional rollback dữ liệu nếu có lỗi
-     *
+     * Transactional: rollback dữ liệu nếu có lỗi
+     * @param employeeId id employee.
+     * @param employeeRequest request nhận về.
      * */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -280,17 +258,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmployeeTelephone(employeeRequest.getEmployeeTelephone());
         employee.setDepartment(department);
 
-        //nếu request vẫn trả về password từ api thì cập nhật.
-//        String newPassword = employeeRequest.getEmployeeLoginPassword();
-//        if (newPassword != null && !newPassword.isEmpty()) {
-//            employee.setEmployeeLoginPassword(passwordEncoder.encode(newPassword));
-//        }
-
         //lưu thông tin nhân viên
         employeeRepository.save(employee);
 
         //Cập nhật chứng chỉ tiếng Nhật cho nhân viên.
         employeeCertificationRepository.deleteByEmployeeId(employeeId);
         saveCertifications(employee, employeeRequest.getCertifications());
+    }
+
+    /**
+     * kiểm tra employeeLoginId có tồn tại không.
+     * */
+    @Override
+    public boolean employeeLoginIdExists(String employeeLoginId){
+        return employeeLoginId != null && employeeRepository.existsByEmployeeLoginId(employeeLoginId);
     }
 }

@@ -11,6 +11,8 @@ import com.luvina.la.payload.EmployeeDetailResponse;
 import com.luvina.la.payload.EmployeeListResponse;
 import com.luvina.la.payload.EmployeeResponse;
 import com.luvina.la.payload.EmployeeRequest;
+import com.luvina.la.service.CertificationService;
+import com.luvina.la.service.DepartmentService;
 import com.luvina.la.service.EmployeeService;
 import com.luvina.la.validation.ValidateUtil;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+
+import static com.luvina.la.config.Constants.*;
 
 /**
  * Controller xử lý các API liên quan đến Employee.
@@ -40,6 +44,8 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final ValidateUtil validateUtil;
+    private final DepartmentService departmentService;
+    private final CertificationService certificationService;
 
     /**
      * API lấy danh sách nhân viên với tìm kiếm, sắp xếp, phân trang.
@@ -101,35 +107,33 @@ public class EmployeeController {
     }
 
     /**
-     * API check trùng employee-login-id.
-     * Trùng -> throw AppException(ER003) -> GlobalExceptionHandler trả 400.
-     *
-     * @param employeeLoginId Login ID cần kiểm tra
-     * @return EmployeeMutationResponse.ok() nếu chưa trùng
-     */
-    @GetMapping("/check-employee-login-id")
-    public EmployeeResponse checkEmployeeLoginId(@RequestParam("loginId") String employeeLoginId) {
-        if (employeeService.existsByEmployeeLoginId(employeeLoginId)){
-            throw new AppException(MessageConstants.ER003, Constants.FIELD_LOGIN_ID);
-        }
-        return EmployeeResponse.ok();
-    }
-
-    /**
-     * API khẳng định department và certification tồn tại trong DB.
-     * Dùng cho FE check trước khi submit form (ADM004 / ADM005).
-     * Không tồn tại sẽ throw AppException(ER004) -> GlobalExceptionHandler trả 400.
+     * API check department và certification tồn tại trong DB và employeeLoginId tồn tại theo từng mode xóa hoặc thêm.
+     * Dùng cho FE check trước khi submit form (ADM004).
+     * Không tồn tại sẽ throw AppException(ER004 / er003) -> GlobalExceptionHandler trả 400.
      *
      * @param departmentId    ID phòng ban cần kiểm tra (optional)
      * @param certificationId ID chứng chỉ cần kiểm tra (optional)
-     * @return EmployeeMutationResponse.ok() nếu tồn tại
+     * @param employeeLoginId login Id cần kiểm tra
+     * @param mode mode cần xem xét khi kiểm tra login Id
+     * @return EmployeeResponse.ok() nếu không có lỗi.
      */
     @GetMapping("/check-refs-exist")
     public EmployeeResponse checkRefsExist(
             @RequestParam(value = "departmentId", required = false) Long departmentId,
-            @RequestParam(value = "certificationId", required = false) Long certificationId
+            @RequestParam(value = "certificationId", required = false) Long certificationId,
+            @RequestParam(value = "employeeLoginId", required = false) String employeeLoginId,
+            @RequestParam(value = "mode", required = false) String mode
     ) {
-        employeeService.checkDepartmentAndCertificationExist(departmentId, certificationId);
+
+        if (employeeLoginId != null && employeeService.employeeLoginIdExists(employeeLoginId) && MODE_ADD.equals(mode)) {
+            throw new AppException(MessageConstants.ER003, FIELD_LOGIN_ID);
+        }
+        if (departmentId != null && !departmentService.departmentExists(departmentId)) {
+            throw new AppException(MessageConstants.ER004, FIELD_DEPARTMENT);
+        }
+        if (certificationId != null && !certificationService.certificationExists(certificationId)) {
+            throw new AppException(MessageConstants.ER004, FIELD_CERTIFICATION);
+        }
         return EmployeeResponse.ok();
     }
 
@@ -139,7 +143,7 @@ public class EmployeeController {
      * Không tồn tại → AppException(ER013) → GlobalExceptionHandler trả 400.
      *
      * @param employeeId ID nhân viên lấy từ path
-     * @return EmployeeDetailResponse chứa thông tin chi tiết nhân viên
+     * @return EmployeeResponse chứa thông tin chi tiết nhân viên
      */
     @GetMapping("/{employeeId}")
     public EmployeeDetailResponse getEmployeeDetail(@PathVariable("employeeId") Long employeeId) {

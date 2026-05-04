@@ -35,4 +35,9 @@ public class DepartmentServiceImpl implements DepartmentService {
                 .map(d -> new DepartmentDTO(d.getDepartmentId(), d.getDepartmentName()))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public boolean departmentExists(Long id) {
+        return id != null && departmentRepository.existsById(id);
+    }
 }

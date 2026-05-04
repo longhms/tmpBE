@@ -19,4 +19,10 @@ public interface DepartmentService {
      * Lấy tất cả phòng ban, sắp xếp theo tên tăng dần.
      */
     List<DepartmentDTO> getAllDepartments();
+
+    /**
+     * kiểm tra tồn tại department theo id.
+     * @return true nếu tồn tại.
+     * */
+    boolean departmentExists(Long id);
 }

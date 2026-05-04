@@ -59,23 +59,6 @@ public interface EmployeeService {
     EmployeeDetailResponse getEmployeeDetail(Long employeeId);
 
     /**
-     * Check trùng employeeLoginId trong DB.
-     *
-     * @param employeeLoginId loginId cần kiểm tra
-     * @return true nếu đã tồn tại
-     */
-    boolean existsByEmployeeLoginId(String employeeLoginId);
-
-    /**
-     * Khẳng định phòng ban / chứng chỉ tiếng Nhật tồn tại trong DB.
-     * Không tồn tại sẽ throw AppException(ER004).
-     *
-     * @param departmentId    ID phòng ban (null -> bỏ qua)
-     * @param certificationId ID chứng chỉ (null -> bỏ qua)
-     */
-    void checkDepartmentAndCertificationExist(Long departmentId, Long certificationId);
-
-    /**
      * Xóa 1 nhân viên (ADM003 -> ADM006).
      * Không tồn tại -> ER014. Là admin -> ER020.
      *
@@ -86,6 +69,14 @@ public interface EmployeeService {
     /**
      * Cập nhật 1 nhân viên (adm005 edit -> adm006)
      * Không tồn tại -> throw AppException.
+     * Kiểm tra nếu login_id tồn tại nhưng không thuộc về employeeId đang update -> ER021
+     * Không update được ID hoặc là Admin -> throw AppException
      * */
     void updateEmployee(Long employeeId, EmployeeRequest request);
+
+    /**
+     * kiểm tra login id có tồn tại trong db không?
+     * @return true nếu tồn tại
+     */
+    boolean employeeLoginIdExists(String employeeLoginId);
 }
