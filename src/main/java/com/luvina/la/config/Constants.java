@@ -24,12 +24,12 @@ public class Constants {
 
     // ── Các giới hạn độ dài ──
     public static final int MAX_LEN_LOGIN_ID = 50;
-    public static final int MAX_LEN_NAME = 125;
-    public static final int MAX_LEN_EMAIL = 125;
+    public static final int MAX_LEN_NAME = 255;
+    public static final int MAX_LEN_EMAIL = 255;
     public static final int MAX_LEN_PHONE = 50;
     public static final int MIN_LEN_PASSWORD = 8;
     public static final int MAX_LEN_PASSWORD = 50;
-    public static final int MAX_LEN_SCORE = 3;
+    public static final int MAX_LEN_SCORE = 6;
 
     // ── Các tên field tiếng Nhật (dùng đổ vào {0} trong message) ──
     public static final String FIELD_LOGIN_ID = "アカウント名";
@@ -56,7 +56,7 @@ public class Constants {
     /** katakana (kèm dấu ー và khoảng trắng fullwidth) */
     public static final Pattern KATAKANA_PATTERN = Pattern.compile("^[\\u30A0-\\u30FF\\uFF65-\\uFF9F\\s]+$");
     /** chỉ digit + optional dấu chấm */
-    public static final Pattern SCORE_PATTERN = Pattern.compile("^\\d+(\\.\\d+)?$");
+    public static final Pattern SCORE_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,2})?$");
     /** pattern email */
     public static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     /** phone: chỉ digit và dấu gạch ngang */
@@ -64,6 +64,8 @@ public class Constants {
     /** date yyyy/MM/dd (validate lexical), ngữ nghĩa validate qua DateTimeFormatter STRICT */
     public static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("uuuu/MM/dd").withResolverStyle(ResolverStyle.STRICT);
+    public static final String EMAIL_FORMAT = "***@***.***";
+    public static final String SCORE_FORMAT = "xxx.xx | xxx.x | xxx";
 
     // config endpoints public
     public static final String[] ENDPOINTS_PUBLIC = new String[] {

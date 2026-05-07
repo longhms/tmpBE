@@ -77,7 +77,7 @@ public class EmployeeValidation {
         if (isEmpty(value))
             throw new AppException(MessageConstants.ER001, fieldName);
         if (value.length() > maxLen) {
-            throw new AppException(MessageConstants.ER006, fieldName, String.valueOf(maxLen));
+            throw new AppException(MessageConstants.ER006, String.valueOf(maxLen), fieldName);
         }
     }
 
@@ -182,7 +182,7 @@ public class EmployeeValidation {
     private void validateEmail(String email) {
         validateRequiredMaxLen(email, MAX_LEN_EMAIL, FIELD_EMAIL);
         if (!EMAIL_PATTERN.matcher(email).matches()) {
-            throw new AppException(MessageConstants.ER005, FIELD_EMAIL);
+            throw new AppException(MessageConstants.ER005, FIELD_EMAIL, EMAIL_FORMAT);
         }
     }
 
@@ -237,9 +237,11 @@ public class EmployeeValidation {
         }
 
         // score: bắt buộc nhập + maxlength + đúng định dạng số
-        validateRequiredMaxLen(cert.getScore(), MAX_LEN_SCORE, FIELD_SCORE);
+        if (isEmpty(cert.getScore())) {
+            throw new AppException(MessageConstants.ER001, FIELD_SCORE);
+        }
         if (!SCORE_PATTERN.matcher(cert.getScore()).matches()) {
-            throw new AppException(MessageConstants.ER008, FIELD_SCORE);
+            throw new AppException(MessageConstants.ER005, FIELD_SCORE, SCORE_FORMAT);
         }
     }
 

@@ -42,7 +42,7 @@ public interface EmployeeService {
 
     /**
      * Thêm mới 1 nhân viên (ADM005 -> ADM006).
-     * Lỗi validate / nghiệp vụ sẽ throw AppException, transaction sẽ rollback.
+     *ws Lỗi validate / nghiệp vụ sẽ throw AppException, transaction sẽ rollback.
      *
      * @param request Dữ liệu nhân viên gửi từ ADM005
      * @return employee_id vừa tạo
